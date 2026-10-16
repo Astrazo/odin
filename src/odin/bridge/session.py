@@ -1,0 +1,1 @@
+"""Attach, stop, evaluate and disconnect the HashLink adapter."""

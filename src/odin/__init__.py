@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from odin!")
+"""Odin: a gradually migrated Northgard bridge."""
