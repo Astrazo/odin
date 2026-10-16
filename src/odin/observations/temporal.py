@@ -1,10 +1,18 @@
-FEATURE_NAMES = ["game_time"]
+"""Small first observation sourced entirely from an inspected native getter."""
+
+FEATURE_NAMES = ["is_paused"]
 
 
-def observe_temporal(evaluate) -> dict:
-    game_time = float(evaluate("this.state.time"))
+def read_is_paused(runtime) -> bool:
+    result = runtime.call_native("this.state.isPaused()")
+    if result not in ("true", "false"):
+        raise RuntimeError(f"Expected isPaused to return a Boolean: {result!r}")
+    return result == "true"
 
+
+def observe_pause(runtime) -> dict:
+    paused = read_is_paused(runtime)
     return {
-        "feature_names": FEATURE_NAMES,
-        "x": [game_time],
+        "feature_names": list(FEATURE_NAMES),
+        "x": [1.0 if paused else 0.0],
     }

@@ -1,0 +1,31 @@
+{
+  "northgard_bytecode_sha256": "db0459d251879698420f58f6819e0ab2f75a3cde6e65611f2ad723f3b4b7ef76",
+  "hashlink_adapter_sha256": "91a0368e16a75084baeb8cf8e821726b011aea1e47914e29be4cbedf760b7de3",
+  "update_frame": {
+    "source": "src/Game.hx",
+    "line": 2067,
+    "function_index": 6637,
+    "name": "Game.onUpdate"
+  },
+  "native_functions": {
+    "is_paused": {
+      "function_index": 7586,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "bool"
+    },
+    "is_multi": {
+      "function_index": 7563,
+      "arguments": ["ptr", "ptr"],
+      "kinds": [11, 19],
+      "null_only": [1],
+      "result": "bool"
+    },
+    "set_pause": {
+      "function_index": 13003,
+      "arguments": ["ptr", "bool", "ptr"],
+      "kinds": [11, 7, 11],
+      "result": "void"
+    }
+  }
+}
