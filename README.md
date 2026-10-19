@@ -69,9 +69,14 @@ on live terrain, prerequisites, resources, slots, and game mode. Use the report
 to author Odin's small semantic building vocabulary. The live zone action mask
 then enables only actions returned by Northgard for the current clan and zone.
 
-The current zone tensor uses the reviewed Wolf/Bear schema in
-`src/odin/data/building_schema.json`. It contains 18 semantic families, such as
-`house`, `mine`, and `tower`. `GuardTower` and `WatchTower` both map to `tower`.
+The current zone tensor uses the reviewed Wolf/Bear/Stag/Goat/Raven schema in
+`src/odin/data/building_schema.json`. It contains 26 semantic families, such as
+`house`, `mine`, `carved_stone`, and `tower`. `GuardTower` and `WatchTower` both
+map to `tower`; Stag adds its distinct `hall_of_skalds` family and Goat adds
+`sheepfold`. The shared late-game families are `altar_of_kings`, `offering_well`,
+and `monument_to_gods`. Raven's `RavenPort` is the distinct `harbor` family; it
+is not folded into `longship_dock`. Boar's `MenderHut` is the distinct
+`menders_hut` family, because idle Menders generate Lore rather than Food.
 Unknown engine IDs are omitted from counts and action masks. Completed and
 under-construction counts share each zone's feature row, and the aligned action
 mask is nonzero only for owned zones and engine-available mapped IDs.
@@ -82,4 +87,8 @@ The selected clans and rollout order live in
 `src/odin/data/training_clans.json`. Wolf and Bear are the baseline. Stag and
 Goat follow once that contract is stable, then Raven and Boar. Bear's future
 military action set contains both `recruit_warchief` and
-`recruit_bear_companion`; neither action is implemented yet.
+`recruit_bear_companion`. Raven's planned Harbor actions are `loot_krowns`,
+`scout_shores`, and `deploy_mercenaries`; normal Dock modes are `raid_lore` and
+`raid_fame`. Trade routes are deferred. No recruitment or Harbor action is
+implemented yet. Boar's future neutral-zone colonisation path is also action
+masked separately.

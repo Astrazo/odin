@@ -22,6 +22,21 @@
     "Bear": {
       "actions": ["recruit_warchief", "recruit_bear_companion"],
       "note": "Bear's military action set must expose both its warchief and bear companion."
+    },
+    "Raven": {
+      "actions": ["deploy_mercenaries"],
+      "excluded_for_now": ["build_trade_route"],
+      "note": "Harbor replaces the Longship Dock. Mercenary deployment targets an enemy coastal zone."
+    },
+    "Boar": {
+      "actions": ["colonize_neutral_zone"],
+      "note": "The future action mask must expose the Boar neutral-zone colonisation path only when its live requirements hold."
+    }
+  },
+  "planned_action_families": {
+    "set_sailor_mode": {
+      "longship_dock": ["raid_lore", "raid_fame"],
+      "harbor": ["loot_krowns", "scout_shores"]
     }
   },
   "excluded_for_now": {

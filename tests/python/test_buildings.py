@@ -86,6 +86,42 @@ class BuildingTests(unittest.TestCase):
         self.assertEqual(schema["family_by_engine_id"]["GuardTower"], "tower")
         self.assertEqual(schema["family_by_engine_id"]["WatchTower"], "tower")
 
+    def test_schema_maps_stag_and_goat_buildings(self):
+        schema = load_building_schema()
+
+        self.assertEqual(
+            schema["family_by_engine_id"]["HallOfPoetry"],
+            "hall_of_skalds",
+        )
+        self.assertEqual(schema["family_by_engine_id"]["Sheepfold"], "sheepfold")
+
+    def test_schema_includes_the_shared_carved_stone_building(self):
+        schema = load_building_schema()
+
+        self.assertEqual(schema["family_by_engine_id"]["CarvedStone"], "carved_stone")
+
+    def test_schema_includes_shared_special_buildings(self):
+        schema = load_building_schema()
+
+        self.assertEqual(schema["family_by_engine_id"]["Temple"], "altar_of_kings")
+        self.assertEqual(schema["family_by_engine_id"]["OfferingWell"], "offering_well")
+        self.assertEqual(
+            schema["family_by_engine_id"]["VikingLoreWonder"],
+            "monument_to_gods",
+        )
+
+    def test_schema_keeps_raven_harbor_distinct_from_longship_dock(self):
+        schema = load_building_schema()
+
+        self.assertEqual(schema["family_by_engine_id"]["Port"], "longship_dock")
+        self.assertEqual(schema["family_by_engine_id"]["RavenPort"], "harbor")
+
+    def test_schema_keeps_boar_menders_hut_distinct_from_healer_hut(self):
+        schema = load_building_schema()
+
+        self.assertEqual(schema["family_by_engine_id"]["HealerHut"], "healer_hut")
+        self.assertEqual(schema["family_by_engine_id"]["MenderHut"], "menders_hut")
+
 
 if __name__ == "__main__":
     unittest.main()
