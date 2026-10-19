@@ -8,7 +8,7 @@ import typer
 from odin.actions.pause import pause_game
 from odin.bridge.launch import launch_game
 from odin.bridge.session import NativeRuntime
-from odin.environment import NorthgardEnv
+from odin.environment import NorthgardEnv, OBSERVATION_TENSORS
 from odin.observations.temporal import observe_pause
 
 
@@ -47,9 +47,29 @@ def pause() -> None:
 
 
 @app.command()
-def run() -> None:
+def run(
+    tensor: list[str] | None = typer.Option(
+        None,
+        "--tensor",
+        "-t",
+        help=(
+            "Tensor to extract: pause, economy, temporal or zones. "
+            "Repeat for more than one; omit for all."
+        ),
+    ),
+) -> None:
     """Keep one connection open and print an observation every 0.5 seconds."""
-    with NorthgardEnv(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as env:
+    selected = tuple(tensor) if tensor else None
+    if selected:
+        unknown = set(selected) - set(OBSERVATION_TENSORS)
+        if unknown:
+            choices = ", ".join(OBSERVATION_TENSORS)
+            raise typer.BadParameter(
+                f"unknown tensor(s) {sorted(unknown)}; choose from {choices}",
+                param_hint="--tensor",
+            )
+
+    with NorthgardEnv(ADAPTER, DEFAULT_EXE, DEBUG_PORT, tensors=selected) as env:
         typer.echo(json.dumps(env.observe()))
         while True:
             typer.echo(json.dumps(env.step()))

@@ -14,6 +14,85 @@
       "kinds": [11],
       "result": "bool"
     },
+    "get_game_time": {
+      "function_index": 6621,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "f64"
+    },
+    "time_to_next_winter": {
+      "function_index": 7570,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "f64"
+    },
+    "time_to_winter_end": {
+      "function_index": 7571,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "f64"
+    },
+    "get_zone_owner": {
+      "function_index": 3178,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "ptr"
+    },
+    "has_discovered": {
+      "function_index": 4668,
+      "arguments": ["ptr", "ptr"],
+      "kinds": [11, 11],
+      "result": "bool"
+    },
+    "get_team": {
+      "function_index": 4803,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "ptr"
+    },
+    "has_fish": {
+      "function_index": 3192,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "bool"
+    },
+    "has_natural_food_source": {
+      "function_index": 3347,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "bool"
+    },
+    "get_deposit_resource_count": {
+      "function_index": 3370,
+      "arguments": ["ptr", "ptr"],
+      "kinds": [11, 11],
+      "result": "f64"
+    },
+    "building_is_player_built": {
+      "function_index": 5767,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "bool"
+    },
+    "building_get_id": {
+      "function_index": 5785,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "ptr"
+    },
+    "building_get_real_kind": {
+      "function_index": 5678,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "ptr"
+    },
+    "get_available_buildings": {
+      "function_index": 3368,
+      "arguments": ["ptr", "ptr", "ptr", "ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 19, 19, 15, 15],
+      "null_only": [2, 3, 4, 5],
+      "result": "ptr"
+    },
     "is_multi": {
       "function_index": 7563,
       "arguments": ["ptr", "ptr"],

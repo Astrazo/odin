@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "clans": ["Wolf", "Bear"],
+  "families": [
+    {"id": "scout_camp", "engine_ids": ["ScoutCamp"]},
+    {"id": "house", "engine_ids": ["House"]},
+    {"id": "healer_hut", "engine_ids": ["HealerHut"]},
+    {"id": "tavern", "engine_ids": ["Tavern"]},
+    {"id": "wood_lodge", "engine_ids": ["WoodLodge"]},
+    {"id": "fields", "engine_ids": ["Fields"]},
+    {"id": "hunter_lodge", "engine_ids": ["HunterLodge"]},
+    {"id": "fisherman_hut", "engine_ids": ["FishermanHouse"]},
+    {"id": "food_silo", "engine_ids": ["FoodSilo"]},
+    {"id": "marketplace", "engine_ids": ["MarketPlace"]},
+    {"id": "trading_post", "engine_ids": ["TradingPost"]},
+    {"id": "longship_dock", "engine_ids": ["Port"]},
+    {"id": "mine", "engine_ids": ["AllMines"]},
+    {"id": "forge", "engine_ids": ["Forge"]},
+    {"id": "training_camp", "engine_ids": ["TrainingCamp"]},
+    {"id": "axe_thrower_camp", "engine_ids": ["AxeCenter"]},
+    {"id": "shield_bearer_camp", "engine_ids": ["ShieldCenter"]},
+    {"id": "tower", "engine_ids": ["WatchTower", "GuardTower"]}
+  ]
+}

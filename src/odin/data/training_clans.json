@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "included_clans": ["Wolf", "Bear", "Stag", "Goat", "Raven", "Boar"],
+  "rollout": [
+    {
+      "phase": 1,
+      "clans": ["Wolf", "Bear"],
+      "purpose": "Baseline Viking observation and action contract."
+    },
+    {
+      "phase": 2,
+      "clans": ["Stag", "Goat"],
+      "purpose": "Add a building replacement and a clan-specific building."
+    },
+    {
+      "phase": 3,
+      "clans": ["Raven", "Boar"],
+      "purpose": "Add clan-specific economy and neutral-relation mechanics."
+    }
+  ],
+  "planned_action_exceptions": {
+    "Bear": {
+      "actions": ["recruit_warchief", "recruit_bear_companion"],
+      "note": "Bear's military action set must expose both its warchief and bear companion."
+    }
+  },
+  "excluded_for_now": {
+    "Lion": "Kingdom worker, livability, and Farmstead transformation contract.",
+    "Snake": "Specialist military and territory mechanics.",
+    "Dragon": "Thrall and sacrifice economy.",
+    "Horse": "Warchief- and forge-centred economy."
+  }
+}

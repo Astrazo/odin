@@ -33,7 +33,53 @@ Current observation
 - net flow for each resource
 - happiness, population, population cap and food cap
 - villager growth active, progress and time remaining
+- current game time and time until the next winter and summer
+- discovered one-hop zone graph with ownership, natural-food, fish and remaining
+  stone/iron features per node
 
 Resource catalogue IDs are found once when the environment opens. Every value
-placed in the economy tensor comes from an inspected native getter. The migrated economy tensor has also completed one live 19-value read on the
-recorded build. Exact UI agreement and broader match states still need comparison.
+placed in the economy tensor comes from an inspected native getter. The migrated
+economy tensor has also completed one live 19-value read on the recorded build.
+The temporal tensor has completed one live summer read with internally consistent
+winter and summer boundaries. Winter-state and UI comparisons still remain.
+
+`odin run` extracts every tensor by default. Repeat `--tensor` to request only
+the groups needed for a test:
+
+```powershell
+uv run odin run --tensor zones
+uv run odin run --tensor economy --tensor temporal
+```
+
+Available names are `pause`, `economy`, `temporal` and `zones`.
+
+## Offline building candidates
+
+Building definitions can be reviewed without starting Northgard. The tool reads
+the installed `res.client.pak`, extracts `data.cdb`, and selects ordinary
+build-tab candidates for the requested clans:
+
+```powershell
+uv run python .\tools\building_catalogue.py "C:\Program Files (x86)\Steam\steamapps\common\Northgard\res.client.pak" --clan Wolf --clan Stag
+```
+
+It applies the static clan-type and declared clan restrictions. It does not
+answer whether a building is available in a particular zone: that still depends
+on live terrain, prerequisites, resources, slots, and game mode. Use the report
+to author Odin's small semantic building vocabulary. The live zone action mask
+then enables only actions returned by Northgard for the current clan and zone.
+
+The current zone tensor uses the reviewed Wolf/Bear schema in
+`src/odin/data/building_schema.json`. It contains 18 semantic families, such as
+`house`, `mine`, and `tower`. `GuardTower` and `WatchTower` both map to `tower`.
+Unknown engine IDs are omitted from counts and action masks. Completed and
+under-construction counts share each zone's feature row, and the aligned action
+mask is nonzero only for owned zones and engine-available mapped IDs.
+
+## Training-clan rollout
+
+The selected clans and rollout order live in
+`src/odin/data/training_clans.json`. Wolf and Bear are the baseline. Stag and
+Goat follow once that contract is stable, then Raven and Boar. Bear's future
+military action set contains both `recruit_warchief` and
+`recruit_bear_companion`; neither action is implemented yet.
