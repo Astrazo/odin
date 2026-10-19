@@ -42,7 +42,7 @@ def is_paused_command() -> None:
 @app.command()
 def pause() -> None:
     """Pause the current offline match through the native bridge."""
-    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT, allow_pause=True) as runtime:
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
         typer.echo(json.dumps(pause_game(runtime)))
 
 

@@ -5,9 +5,6 @@ from odin.observations.temporal import read_is_paused
 
 def pause_game(runtime) -> dict:
     """Call the normal pause function once and confirm that it worked."""
-    if not runtime.allow_pause:
-        raise RuntimeError("This runtime session does not allow the pause action.")
-
     before = read_is_paused(runtime)
     if before:
         raise RuntimeError("The game is already paused, waiting, or ended; no action sent.")

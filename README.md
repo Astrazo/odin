@@ -24,3 +24,16 @@ Existing HashLink adapter machinery
 Northgard debug connection
         ↓
 Native function executes inside Northgard
+
+
+Current observation
+
+- pause state
+- food, wood, Krowns, stone, iron and lore stocks
+- net flow for each resource
+- happiness, population, population cap and food cap
+- villager growth active, progress and time remaining
+
+Resource catalogue IDs are found once when the environment opens. Every value
+placed in the economy tensor comes from an inspected native getter. The migrated economy tensor has also completed one live 19-value read on the
+recorded build. Exact UI agreement and broader match states still need comparison.

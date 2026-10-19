@@ -36,12 +36,11 @@ class FakeStepSession:
         return {"threadId": 8, "reason": "breakpoint"}
 
 
-def runtime(values, *, allow_pause=False):
+def runtime(values):
     bridge = NativeRuntime(
         Path("adapter.js"),
         Path("Northgard.exe"),
         6112,
-        allow_pause=allow_pause,
     )
     bridge.session = FakeSession(values)
     bridge.frame = 42
@@ -57,7 +56,7 @@ class NativeRuntimeTests(unittest.TestCase):
         }
         bridge.session = FakeStepSession()
 
-        bridge.advance(0)
+        bridge.advance_step(0)
 
         self.assertEqual(bridge.thread, 8)
         self.assertEqual(bridge.frame, 84)
@@ -79,7 +78,7 @@ class NativeRuntimeTests(unittest.TestCase):
             "this.state.isPaused()": ["false", "true"],
             "this.state.isMulti(null)": ["false"],
             "this.state.me.ui.setPause(true, this.state.me)": ["null"],
-        }, allow_pause=True)
+        })
         self.assertEqual(
             pause_game(bridge),
             {"before_is_paused": False, "after_is_paused": True},
@@ -91,14 +90,8 @@ class NativeRuntimeTests(unittest.TestCase):
             "this.state.isPaused()",
         ])
 
-    def test_pause_action_is_not_available_in_read_session(self):
-        bridge = runtime({})
-        with self.assertRaisesRegex(RuntimeError, "does not allow"):
-            pause_game(bridge)
-        self.assertEqual(bridge.session.expressions, [])
-
     def test_already_paused_aborts_before_action(self):
-        bridge = runtime({"this.state.isPaused()": ["true"]}, allow_pause=True)
+        bridge = runtime({"this.state.isPaused()": ["true"]})
         with self.assertRaisesRegex(RuntimeError, "already paused"):
             pause_game(bridge)
         self.assertEqual(bridge.session.expressions, ["this.state.isPaused()"])
@@ -107,7 +100,7 @@ class NativeRuntimeTests(unittest.TestCase):
         bridge = runtime({
             "this.state.isPaused()": ["false"],
             "this.state.isMulti(null)": ["true"],
-        }, allow_pause=True)
+        })
         with self.assertRaisesRegex(RuntimeError, "offline single-player"):
             pause_game(bridge)
         self.assertNotIn(

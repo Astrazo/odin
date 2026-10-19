@@ -1,15 +1,11 @@
-// Execute only the native functions declared for the selected Odin operation.
+// Execute only the native functions declared for this Northgard build.
 const build = require('../data/supported_build.json');
 const {encodeArgument, buildCallStub} = require('./win64_call');
 const {readTarget} = require('./abi_memory');
 
-function contractsFor(options = {}) {
-    const names = ['is_paused'];
-    if (options.allowPause) names.push('is_multi', 'set_pause');
-
+function contractsFor() {
     const contracts = new Map();
-    for (const name of names) {
-        const declared = build.native_functions[name];
+    for (const [name, declared] of Object.entries(build.native_functions)) {
         contracts.set(declared.function_index, {
             name,
             args: declared.arguments,
@@ -21,9 +17,9 @@ function contractsFor(options = {}) {
     return contracts;
 }
 
-function install(classes, options = {}) {
+function install(classes) {
     const {Eval, Adapter, Buffer: DebugBuffer, Pointer, Register} = classes;
-    const contracts = contractsFor(options);
+    const contracts = contractsFor();
     let recoveryUnconfirmed = false;
 
     const originalDisconnect = Adapter.prototype.disconnectRequest;

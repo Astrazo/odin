@@ -5,10 +5,6 @@ const Module = require('module');
 const path = require('path');
 
 const adapterPath = path.resolve(process.argv[2]);
-const mode = process.argv[3];
-if (!['--read-pause', '--set-pause'].includes(mode)) {
-    throw new Error('Expected --read-pause or --set-pause mode');
-}
 
 const build = require('../data/supported_build.json');
 const adapterBytes = fs.readFileSync(adapterPath);
@@ -27,7 +23,7 @@ const bridgePath = path.join(__dirname, 'abi_call_bridge.js');
 const injection = `require(${JSON.stringify(bridgePath)}).install({` +
     'Eval: hld_Eval, Adapter: HLAdapter, Buffer: hld_Buffer, ' +
     'Pointer: hld_Pointer, Register: hld_Register' +
-    `}, {allowPause: ${mode === '--set-pause'}});\n`;
+    '});\n';
 
 const adapter = new Module(adapterPath, module);
 adapter.filename = adapterPath;

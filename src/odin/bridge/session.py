@@ -22,13 +22,10 @@ class NativeRuntime:
         adapter: Path,
         exe: Path,
         port: int = 6112,
-        *,
-        allow_pause: bool = False,
     ) -> None:
         self.adapter = adapter.resolve()
         self.exe = exe.resolve()
         self.port = port
-        self.allow_pause = allow_pause
         self.process = None
         self.session = None
         self.frame = None
@@ -59,9 +56,8 @@ class NativeRuntime:
             raise RuntimeError("Northgard changed; rediscover the native function IDs.")
 
     def _create_debugger_adapter(self) -> None:
-        mode = "--set-pause" if self.allow_pause else "--read-pause"
         self.process = subprocess.Popen(
-            ["node", str(NATIVE_DIR / "abi_adapter.js"), str(self.adapter), mode],
+            ["node", str(NATIVE_DIR / "abi_adapter.js"), str(self.adapter)],
             cwd=self.adapter.parent,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -129,7 +125,7 @@ class NativeRuntime:
         self._connect_to_northgard()
         self._stop_at_game_update(finish_configuration=True)
 
-    def advance(self, seconds: float = 0.5) -> None:
+    def advance_step(self, seconds: float = 0.5) -> None:
         """Run Northgard for a while, then capture a fresh Game.onUpdate frame."""
         if self.session is None or self.frame is None or self.thread is None:
             raise RuntimeError("The native runtime is not connected.")
@@ -151,6 +147,24 @@ class NativeRuntime:
             "context": "repl",
         })
         return body["result"]
+
+    def evaluate(self, expression: str) -> str:
+        """Resolve debugger metadata used to locate native call arguments."""
+        return self.call_native(expression)
+
+    def array_length(self, expression: str) -> int:
+        """Read an array's length from debugger metadata without a game getter."""
+        if self.session is None or self.frame is None:
+            raise RuntimeError("The native runtime is not connected.")
+        body = self.session.request("evaluate", {
+            "expression": expression,
+            "frameId": self.frame,
+            "context": "repl",
+        })
+        length = body.get("indexedVariables")
+        if type(length) is not int:
+            raise RuntimeError(f"No array length available for {expression}.")
+        return length
 
     def close(self) -> None:
         """Detach the adapter without closing Northgard."""

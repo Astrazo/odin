@@ -26,6 +26,49 @@
       "arguments": ["ptr", "bool", "ptr"],
       "kinds": [11, 7, 11],
       "result": "void"
+    },
+    "get_resource": {
+      "function_index": 13480,
+      "arguments": ["ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 14],
+      "null_only": [2],
+      "result": "f64"
+    },
+    "get_flux": {
+      "function_index": 13523,
+      "arguments": ["ptr", "ptr"],
+      "kinds": [11, 11],
+      "result": "f64"
+    },
+    "get_happiness": {
+      "function_index": 13560,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "f64"
+    },
+    "get_population": {
+      "function_index": 13449,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "i32"
+    },
+    "get_max": {
+      "function_index": 13505,
+      "arguments": ["ptr", "ptr"],
+      "kinds": [11, 11],
+      "result": "i32"
+    },
+    "get_next_villager_progress": {
+      "function_index": 13471,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "f64"
+    },
+    "get_next_villager_time": {
+      "function_index": 13474,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "ptr"
     }
   }
 }
