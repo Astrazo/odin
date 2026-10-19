@@ -1,7 +1,8 @@
 {
   "schema_version": 1,
-  "clans": ["Wolf", "Bear", "Stag", "Goat", "Raven", "Boar"],
+  "clans": ["Wolf", "Bear", "Stag", "Goat", "Raven", "Boar", "Snake", "Horse"],
   "families": [
+    {"id": "town_hall", "engine_ids": ["TownHall"]},
     {"id": "scout_camp", "engine_ids": ["ScoutCamp"]},
     {"id": "house", "engine_ids": ["House"]},
     {"id": "healer_hut", "engine_ids": ["HealerHut"]},
@@ -20,13 +21,14 @@
     {"id": "harbor", "engine_ids": ["RavenPort"]},
     {"id": "mine", "engine_ids": ["AllMines"]},
     {"id": "carved_stone", "engine_ids": ["CarvedStone"]},
-    {"id": "forge", "engine_ids": ["Forge"]},
+    {"id": "forge", "engine_ids": ["Forge", "ForgeHorse"]},
     {"id": "altar_of_kings", "engine_ids": ["Temple"]},
     {"id": "offering_well", "engine_ids": ["OfferingWell"]},
     {"id": "monument_to_gods", "engine_ids": ["VikingLoreWonder"]},
     {"id": "training_camp", "engine_ids": ["TrainingCamp"]},
     {"id": "axe_thrower_camp", "engine_ids": ["AxeCenter"]},
     {"id": "shield_bearer_camp", "engine_ids": ["ShieldCenter"]},
+    {"id": "skirmisher_camp", "engine_ids": ["SkirmishCenter"]},
     {"id": "tower", "engine_ids": ["WatchTower", "GuardTower"]}
   ]
 }

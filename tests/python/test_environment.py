@@ -34,6 +34,7 @@ class EnvironmentTests(unittest.TestCase):
                     "building_ids": [],
                     "schema_sha256": "abc",
                     "build_action_mask": [],
+                    "unmapped_buildings": [],
                 },
             ) as observe_buildings,
         ):
@@ -47,6 +48,7 @@ class EnvironmentTests(unittest.TestCase):
                 "building_ids": [],
                 "building_schema_sha256": "abc",
                 "build_action_mask": [],
+                "unmapped_buildings": [],
             },
         })
         discover_zones.assert_called_once_with(env.runtime)

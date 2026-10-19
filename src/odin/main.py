@@ -1,6 +1,7 @@
 """Command-line entry point for Odin."""
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 import typer
@@ -46,6 +47,35 @@ def pause() -> None:
         typer.echo(json.dumps(pause_game(runtime)))
 
 
+def format_unmapped_buildings(observation: dict) -> str | None:
+    """Return a compact diagnostic report without changing tensor output."""
+    zones = observation.get("zones")
+    if not isinstance(zones, dict):
+        return None
+    entries = zones.get("unmapped_buildings")
+    if not entries:
+        return None
+
+    grouped = {}
+    for entry in entries:
+        zone_id = entry["zone_id"]
+        source = entry["source"]
+        grouped.setdefault((zone_id, source), []).append(entry["engine_id"])
+
+    lines = ["Unmapped building IDs (excluded from the policy schema):"]
+    for (zone_id, source), engine_ids in sorted(grouped.items()):
+        lines.append(f"  Zone {zone_id} {source}: {', '.join(sorted(engine_ids))}")
+    return "\n".join(lines)
+
+
+def write_observation(log_file, observation: dict, *, first: bool) -> None:
+    """Append one observation to an open JSON array and make it inspectable."""
+    if not first:
+        log_file.write(",\n")
+    json.dump(observation, log_file, indent=2)
+    log_file.flush()
+
+
 @app.command()
 def run(
     tensor: list[str] | None = typer.Option(
@@ -56,6 +86,11 @@ def run(
             "Tensor to extract: pause, economy, temporal or zones. "
             "Repeat for more than one; omit for all."
         ),
+    ),
+    show_unmapped: bool = typer.Option(
+        False,
+        "--show-unmapped",
+        help="Print ignored building IDs grouped by zone to stderr.",
     ),
 ) -> None:
     """Keep one connection open and print an observation every 0.5 seconds."""
@@ -70,6 +105,22 @@ def run(
             )
 
     with NorthgardEnv(ADAPTER, DEFAULT_EXE, DEBUG_PORT, tensors=selected) as env:
-        typer.echo(json.dumps(env.observe()))
-        while True:
-            typer.echo(json.dumps(env.step()))
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        log_path = LOG_DIR / f"odin-observations-{timestamp}.json"
+        typer.echo(f"Observation log: {log_path}", err=True)
+
+        with log_path.open("x", encoding="utf-8") as log_file:
+            log_file.write("[\n")
+            first = True
+            try:
+                while True:
+                    observation = env.observe() if first else env.step()
+                    write_observation(log_file, observation, first=first)
+                    first = False
+                    typer.echo(json.dumps(observation))
+                    report = format_unmapped_buildings(observation) if show_unmapped else None
+                    if report:
+                        typer.echo(report, err=True)
+            finally:
+                log_file.write("\n]\n")

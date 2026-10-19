@@ -84,6 +84,7 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
     completed_rows = []
     construction_rows = []
     action_rows = []
+    unmapped = set()
 
     for zone_id in graph["zone_ids"]:
         node = graph["nodes"][zone_id]
@@ -101,6 +102,8 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
                 column = column_by_id.get(family)
                 if column is not None:
                     construction[column] += 1
+                elif real_id is not None:
+                    unmapped.add((zone_id, "construction", real_id))
             else:
                 player_built = _call_bool(runtime, f"{building}.isPlayerBuilt()")
                 base_kind = json.loads(runtime.evaluate(f"{building}.baseKind"))
@@ -109,10 +112,15 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
                     column = column_by_id.get(family)
                     if column is not None:
                         completed[column] += 1
+                    elif current_id is not None:
+                        unmapped.add((zone_id, "completed", current_id))
 
         available = set()
         if node["owner"]["owned"]:
             available = _available_buildings(runtime, zone)
+            for engine_id in available:
+                if engine_id not in catalogue["family_by_engine_id"]:
+                    unmapped.add((zone_id, "available", engine_id))
 
         completed_rows.append(completed)
         construction_rows.append(construction)
@@ -145,4 +153,8 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
         "schema_sha256": catalogue["schema_sha256"],
         "zone_ids": graph["zone_ids"],
         "build_action_mask": action_rows,
+        "unmapped_buildings": [
+            {"zone_id": zone_id, "source": source, "engine_id": engine_id}
+            for zone_id, source, engine_id in sorted(unmapped)
+        ],
     }

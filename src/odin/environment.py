@@ -87,6 +87,7 @@ class NorthgardEnv:
             zones["building_ids"] = buildings["building_ids"]
             zones["building_schema_sha256"] = buildings["schema_sha256"]
             zones["build_action_mask"] = buildings["build_action_mask"]
+            zones["unmapped_buildings"] = buildings["unmapped_buildings"]
             observation["zones"] = zones
         return observation
 

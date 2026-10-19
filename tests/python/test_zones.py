@@ -16,6 +16,8 @@ class FakeRuntime:
             "this.state.me.zones": 1,
             f"{root}.next": 2,
             f"{visible}.next": 1,
+            f"{root}.buildings": 1,
+            f"{visible}.buildings": 1,
         }
         self.values = {
             f"{root}.id": "10",
@@ -31,11 +33,11 @@ class FakeRuntime:
             f"{visible}.getOwner() == null": "true",
             f"this.state.me.hasDiscovered({hidden})": "false",
             f"this.state.me.hasDiscovered({back_to_root})": "true",
-            f"{root}.hasNaturalFoodSource()": "true",
+            f"{root}.buildings[0].get_id()": '"Fertility"',
             f"{root}.hasFish()": "false",
             f"{root}.getDepositResCount(stone_key)": "0.0",
             f"{root}.getDepositResCount(iron_key)": "15.5",
-            f"{visible}.hasNaturalFoodSource()": "false",
+            f"{visible}.buildings[0].get_id()": '"DeerSpawner"',
             f"{visible}.hasFish()": "true",
             f"{visible}.getDepositResCount(stone_key)": "30.0",
             f"{visible}.getDepositResCount(iron_key)": "0.0",
@@ -67,15 +69,16 @@ class ZoneGraphTests(unittest.TestCase):
             "neutral",
             "allied_owned",
             "enemy_owned",
-            "natural_food_available",
+            "has_fields",
+            "has_deer",
             "has_fish",
             "stone_remaining",
             "iron_remaining",
         ])
         self.assertEqual(report["zone_ids"], [10, 20])
         self.assertEqual(report["x"], [
-            [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 15.5],
-            [0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 30.0, 0.0],
+            [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 15.5],
+            [0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 30.0, 0.0],
         ])
         self.assertEqual(report["edge_index"], [[0, 1], [1, 0]])
         self.assertNotIn("this.state.me.zones[0].next[1].id", runtime.evaluated)

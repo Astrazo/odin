@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "included_clans": ["Wolf", "Bear", "Stag", "Goat", "Raven", "Boar"],
+  "included_clans": ["Wolf", "Bear", "Stag", "Goat", "Raven", "Boar", "Snake"],
   "rollout": [
     {
       "phase": 1,
@@ -16,6 +16,16 @@
       "phase": 3,
       "clans": ["Raven", "Boar"],
       "purpose": "Add clan-specific economy and neutral-relation mechanics."
+    },
+    {
+      "phase": 4,
+      "clans": ["Snake"],
+      "purpose": "Add Signy state and copied-Lore choices to the Viking contract."
+    },
+    {
+      "phase": 5,
+      "clans": ["Horse"],
+      "purpose": "Add Forge-based warchief recruitment while retaining the shared building contract."
     }
   ],
   "planned_action_exceptions": {
@@ -31,6 +41,20 @@
     "Boar": {
       "actions": ["colonize_neutral_zone"],
       "note": "The future action mask must expose the Boar neutral-zone colonisation path only when its live requirements hold."
+    },
+    "Snake": {
+      "actions": ["recruit_signy", "copy_lore"],
+      "observations": ["signy_age", "copied_lore"],
+      "action_masks": ["copied_lore_choice"],
+      "excluded_buildings": ["altar_of_kings"],
+      "note": "Snake has no Fame path. Signy begins in play and can be recruited after death."
+    },
+    "Horse": {
+      "actions": ["recruit_warchief"],
+      "action_requirements": ["horse_forge"],
+      "excluded_buildings": ["mine"],
+      "deferred_actions": ["craft_forge_relic"],
+      "note": "Horse mines through warchiefs and recruits its warchiefs from ForgeHorse."
     }
   },
   "planned_action_families": {
@@ -41,8 +65,6 @@
   },
   "excluded_for_now": {
     "Lion": "Kingdom worker, livability, and Farmstead transformation contract.",
-    "Snake": "Specialist military and territory mechanics.",
-    "Dragon": "Thrall and sacrifice economy.",
-    "Horse": "Warchief- and forge-centred economy."
+    "Dragon": "Separate worker populations, Dragon Essence instead of happiness, rebellion risk, and a different military tree."
   }
 }

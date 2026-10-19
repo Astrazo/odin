@@ -9,7 +9,7 @@ from odin.observations.buildings import load_building_schema, observe_buildings
 class FakeRuntime:
     def __init__(self):
         self.lengths = {
-            "zone_10.buildings": 2,
+            "zone_10.buildings": 3,
             "zone_20.buildings": 1,
             (
                 "zone_10.getAvailableBuildings("
@@ -18,6 +18,7 @@ class FakeRuntime:
         }
         self.values = {
             "zone_10.buildings[0].baseKind": json.dumps("House"),
+            "zone_10.buildings[2].baseKind": json.dumps("UnknownWorkshop"),
             (
                 "zone_10.getAvailableBuildings("
                 "this.state.me, null, null, null, null)[0].id"
@@ -29,6 +30,9 @@ class FakeRuntime:
             "zone_10.buildings[0].isPlayerBuilt()": "true",
             "zone_10.buildings[1].get_id()": json.dumps("Construction"),
             "zone_10.buildings[1].get_realKind()": json.dumps("GuardTower"),
+            "zone_10.buildings[2].get_id()": json.dumps("UnknownWorkshop"),
+            "zone_10.buildings[2].get_realKind()": json.dumps("UnknownWorkshop"),
+            "zone_10.buildings[2].isPlayerBuilt()": "true",
             "zone_20.buildings[0].get_id()": json.dumps("WolfCamp"),
             "zone_20.buildings[0].get_realKind()": json.dumps("WolfCamp"),
             "zone_20.buildings[0].isPlayerBuilt()": "false",
@@ -79,6 +83,11 @@ class BuildingTests(unittest.TestCase):
             report["build_action_mask"],
             [[1.0, 0.0], [0.0, 0.0]],
         )
+        self.assertEqual(report["unmapped_buildings"], [{
+            "zone_id": 10,
+            "source": "completed",
+            "engine_id": "UnknownWorkshop",
+        }])
 
     def test_schema_maps_both_tower_engine_ids_to_one_family(self):
         schema = load_building_schema()
@@ -121,6 +130,25 @@ class BuildingTests(unittest.TestCase):
 
         self.assertEqual(schema["family_by_engine_id"]["HealerHut"], "healer_hut")
         self.assertEqual(schema["family_by_engine_id"]["MenderHut"], "menders_hut")
+
+    def test_schema_includes_snake_skirmisher_camp(self):
+        schema = load_building_schema()
+
+        self.assertEqual(
+            schema["family_by_engine_id"]["SkirmishCenter"],
+            "skirmisher_camp",
+        )
+
+    def test_schema_maps_horse_forge_to_the_shared_forge_family(self):
+        schema = load_building_schema()
+
+        self.assertEqual(schema["family_by_engine_id"]["Forge"], "forge")
+        self.assertEqual(schema["family_by_engine_id"]["ForgeHorse"], "forge")
+
+    def test_schema_includes_town_hall(self):
+        schema = load_building_schema()
+
+        self.assertEqual(schema["family_by_engine_id"]["TownHall"], "town_hall")
 
 
 if __name__ == "__main__":

@@ -8,7 +8,8 @@ FEATURE_NAMES = [
     "neutral",
     "allied_owned",
     "enemy_owned",
-    "natural_food_available",
+    "has_fields",
+    "has_deer",
     "has_fish",
     "stone_remaining",
     "iron_remaining",
@@ -42,7 +43,16 @@ def _classify_owner(runtime, zone: str) -> dict[str, bool]:
 
 
 def _zone_features(runtime, zone: str, owner: dict[str, bool], resource_keys) -> list:
-    natural_food = _call_bool(runtime, f"{zone}.hasNaturalFoodSource()")
+    # These are map markers, rather than player-built infrastructure. The
+    # native ID keeps the meaning stable even though the marker itself lives
+    # in the zone's building collection.
+    natural_markers = set()
+    for index in range(runtime.array_length(f"{zone}.buildings")):
+        building = f"{zone}.buildings[{index}]"
+        identifier = runtime.call_native(f"{building}.get_id()")
+        if identifier in ('\"Fertility\"', '\"DeerSpawner\"'):
+            natural_markers.add(identifier)
+
     has_fish = _call_bool(runtime, f"{zone}.hasFish()")
     stone = float(
         runtime.call_native(
@@ -62,7 +72,8 @@ def _zone_features(runtime, zone: str, owner: dict[str, bool], resource_keys) ->
         1.0 if owner["neutral"] else 0.0,
         1.0 if owner["allied_owned"] else 0.0,
         1.0 if owner["enemy_owned"] else 0.0,
-        1.0 if natural_food else 0.0,
+        1.0 if '\"Fertility\"' in natural_markers else 0.0,
+        1.0 if '\"DeerSpawner\"' in natural_markers else 0.0,
         1.0 if has_fish else 0.0,
         stone,
         iron,
