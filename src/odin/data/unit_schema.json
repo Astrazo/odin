@@ -1,0 +1,41 @@
+{
+  "families": [
+    {"id": "villager", "engine_ids": ["Villager", "VillagerWoman"]},
+    {"id": "scout", "engine_ids": ["Scout"]},
+    {"id": "woodcutter", "engine_ids": ["Woodcutter"]},
+    {"id": "farmer", "engine_ids": ["Farmer"]},
+    {"id": "hunter", "engine_ids": ["Hunter"]},
+    {"id": "fisherman", "engine_ids": ["Fisherman"]},
+    {"id": "merchant", "engine_ids": ["Merchant"]},
+    {"id": "sailor", "engine_ids": ["Sailor"]},
+    {"id": "innkeeper", "engine_ids": ["InnKeeper"]},
+    {"id": "miner", "engine_ids": ["Miner"]},
+    {"id": "healer", "engine_ids": ["Healer"]},
+    {"id": "mender", "engine_ids": ["Mender"]},
+    {"id": "smith", "engine_ids": ["Smith"]},
+    {"id": "scholar", "engine_ids": ["Scholar"]},
+    {"id": "skald", "engine_ids": ["Skald"]},
+    {"id": "warrior", "engine_ids": ["Warrior"]},
+    {"id": "axe_thrower", "engine_ids": ["AxeWielder"]},
+    {"id": "shield_bearer", "engine_ids": ["ShieldBearer"]},
+    {"id": "skirmisher", "engine_ids": ["Skirmisher"]},
+    {"id": "warchief", "engine_ids": ["Warchief", "Berserker", "Maiden", "WarchiefSnake", "HorseMaiden", "HorseHero"]},
+    {"id": "bear_companion", "engine_ids": ["Bear"]}
+  ],
+  "neutral_families": [
+    {"id": "wolf", "engine_ids": ["Wolf", "WhiteWolf", "NiflheimWhiteWolf"]},
+    {"id": "primitive_wolf", "engine_ids": ["VanaheimWolf"]},
+    {"id": "warg", "engine_ids": ["Warg"]},
+    {"id": "bear", "engine_ids": ["Bear", "WhiteBear", "PolarBear"]},
+    {"id": "primitive_bear", "engine_ids": ["VanaheimBear"]},
+    {"id": "fox", "engine_ids": ["Fox"]},
+    {"id": "primitive_fox", "engine_ids": ["VanaheimFox"]},
+    {"id": "valkyrie", "engine_ids": ["Valkyrie", "IdavollValkyrie"]},
+    {"id": "draugr", "engine_ids": ["WaveDraugr"]},
+    {"id": "spectral_warrior", "engine_ids": ["SpecterWarrior"]},
+    {"id": "kobold", "engine_ids": ["Kobold"]},
+    {"id": "myrkalfar", "engine_ids": ["Myrkalfar"]},
+    {"id": "dwarf", "engine_ids": ["Dwarf"]},
+    {"id": "giant", "engine_ids": ["Giant"]}
+  ]
+}

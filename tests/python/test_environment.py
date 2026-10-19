@@ -24,7 +24,7 @@ class EnvironmentTests(unittest.TestCase):
             ) as discover_zones,
             patch(
                 "odin.environment.observe_zone_graph",
-                return_value={"feature_names": ["owned"], "x": []},
+                return_value={"feature_names": ["owned"], "zone_ids": [], "x": []},
             ) as observe_zones,
             patch(
                 "odin.environment.observe_buildings",
@@ -37,6 +37,18 @@ class EnvironmentTests(unittest.TestCase):
                     "unmapped_buildings": [],
                 },
             ) as observe_buildings,
+            patch(
+                "odin.environment.observe_units",
+                return_value={
+                    "feature_names": [],
+                    "x": [],
+                    "unit_ids": [],
+                    "neutral_unit_ids": [],
+                    "neutral_family_by_engine_id": {},
+                    "schema_sha256": "def",
+                    "unmapped_units": [],
+                },
+            ) as observe_units,
         ):
             observation = env.observe()
 
@@ -44,11 +56,17 @@ class EnvironmentTests(unittest.TestCase):
             "pause": {"x": [0.0]},
             "zones": {
                 "feature_names": ["owned"],
+                "zone_ids": [],
                 "x": [],
                 "building_ids": [],
                 "building_schema_sha256": "abc",
                 "build_action_mask": [],
                 "unmapped_buildings": [],
+                "unit_ids": [],
+                "neutral_unit_ids": [],
+                "unit_schema_sha256": "def",
+                "unmapped_units": [],
+                "summary": {},
             },
         })
         discover_zones.assert_called_once_with(env.runtime)
@@ -56,10 +74,16 @@ class EnvironmentTests(unittest.TestCase):
             env.runtime,
             env.resource_keys,
             {"nodes": {}, "zone_ids": [], "edge_index": [[], []]},
+            env.zone_feature_catalogue,
         )
         observe_buildings.assert_called_once_with(
             env.runtime,
             env.building_catalogue,
+            {"nodes": {}, "zone_ids": [], "edge_index": [[], []]},
+        )
+        observe_units.assert_called_once_with(
+            env.runtime,
+            env.unit_catalogue,
             {"nodes": {}, "zone_ids": [], "edge_index": [[], []]},
         )
 

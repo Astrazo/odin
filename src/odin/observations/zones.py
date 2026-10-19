@@ -1,19 +1,64 @@
 """Discovered Northgard zones arranged as a graph for a GNN."""
 
+import hashlib
+import json
 import math
+from pathlib import Path
 
 
-FEATURE_NAMES = [
+ZONE_FEATURE_SCHEMA_PATH = Path(__file__).parents[1] / "data" / "zone_feature_schema.json"
+
+
+BASE_FEATURE_NAMES = [
     "owned",
     "neutral",
     "allied_owned",
     "enemy_owned",
-    "has_fields",
-    "has_deer",
+    "is_guarded",
+    "building_slots_used",
+    "building_slots_max",
+    "is_coastal",
     "has_fish",
     "stone_remaining",
     "iron_remaining",
 ]
+
+
+def load_zone_feature_schema() -> dict:
+    """Load the fixed vocabulary of non-player-built zone features."""
+    encoded = ZONE_FEATURE_SCHEMA_PATH.read_bytes()
+    schema = json.loads(encoded)
+    features = schema.get("features")
+    if not isinstance(features, list) or not features:
+        raise ValueError("Zone feature schema must contain features.")
+
+    feature_ids = []
+    feature_by_engine_id = {}
+    for feature in features:
+        identifier = feature.get("id")
+        category = feature.get("category")
+        engine_ids = feature.get("engine_ids")
+        if not isinstance(identifier, str) or not identifier:
+            raise ValueError("Zone feature has an invalid ID.")
+        if not isinstance(category, str) or not category:
+            raise ValueError(f"Zone feature {identifier!r} has an invalid category.")
+        if not isinstance(engine_ids, list) or not engine_ids:
+            raise ValueError(f"Zone feature {identifier!r} has no engine IDs.")
+        if identifier in feature_ids:
+            raise ValueError(f"Zone feature schema has duplicate ID {identifier!r}.")
+        feature_ids.append(identifier)
+        for engine_id in engine_ids:
+            if not isinstance(engine_id, str) or not engine_id:
+                raise ValueError(f"Zone feature {identifier!r} has an invalid engine ID.")
+            if engine_id in feature_by_engine_id:
+                raise ValueError(f"Engine feature {engine_id!r} is mapped twice.")
+            feature_by_engine_id[engine_id] = identifier
+
+    return {
+        "feature_ids": feature_ids,
+        "feature_by_engine_id": feature_by_engine_id,
+        "schema_sha256": hashlib.sha256(encoded).hexdigest(),
+    }
 
 
 def _call_bool(runtime, expression: str) -> bool:
@@ -42,18 +87,31 @@ def _classify_owner(runtime, zone: str) -> dict[str, bool]:
     }
 
 
-def _zone_features(runtime, zone: str, owner: dict[str, bool], resource_keys) -> list:
+def _zone_features(runtime, zone: str, owner: dict[str, bool], resource_keys, catalogue) -> list:
     # These are map markers, rather than player-built infrastructure. The
     # native ID keeps the meaning stable even though the marker itself lives
     # in the zone's building collection.
     natural_markers = set()
     for index in range(runtime.array_length(f"{zone}.buildings")):
         building = f"{zone}.buildings[{index}]"
-        identifier = runtime.call_native(f"{building}.get_id()")
-        if identifier in ('\"Fertility\"', '\"DeerSpawner\"'):
+        identifier = json.loads(runtime.call_native(f"{building}.get_id()"))
+        if identifier in catalogue["feature_by_engine_id"]:
             natural_markers.add(identifier)
 
     has_fish = _call_bool(runtime, f"{zone}.hasFish()")
+    is_guarded = _call_bool(
+        runtime,
+        f"{zone}.hasHostility(this.state.me, null, null, null, null)",
+    )
+    slots_used = int(runtime.call_native(
+        f'{zone}.getCurrentProduction({resource_keys["Building"]}, null, null, null, null)'
+    ))
+    slots_max = int(runtime.call_native(
+        f'{zone}.getMaxProduction({resource_keys["Building"]}, null, null, null, null)'
+    ))
+    if slots_used < 0 or slots_max < 0 or slots_used > slots_max:
+        raise RuntimeError("Invalid building-slot capacity.")
+    is_coastal = _call_bool(runtime, f"{zone}.hasCoast()")
     stone = float(
         runtime.call_native(
             f'{zone}.getDepositResCount({resource_keys["Stone"]})'
@@ -72,16 +130,24 @@ def _zone_features(runtime, zone: str, owner: dict[str, bool], resource_keys) ->
         1.0 if owner["neutral"] else 0.0,
         1.0 if owner["allied_owned"] else 0.0,
         1.0 if owner["enemy_owned"] else 0.0,
-        1.0 if '\"Fertility\"' in natural_markers else 0.0,
-        1.0 if '\"DeerSpawner\"' in natural_markers else 0.0,
+        1.0 if is_guarded else 0.0,
+        slots_used,
+        slots_max,
+        1.0 if is_coastal else 0.0,
         1.0 if has_fish else 0.0,
         stone,
         iron,
+    ] + [
+        1.0 if feature_id in {
+            catalogue["feature_by_engine_id"][marker]
+            for marker in natural_markers
+        } else 0.0
+        for feature_id in catalogue["feature_ids"]
     ]
 
 
-def discover_zone_graph(runtime, max_hops: int = 1) -> dict:
-    """Locate discovered zones and their edges for this stopped frame."""
+def discover_zone_graph(runtime) -> dict:
+    """Locate every discovered zone and visible edge for this stopped frame."""
     nodes = {}
     queue = []
 
@@ -119,10 +185,11 @@ def discover_zone_graph(runtime, max_hops: int = 1) -> dict:
                 continue
             adjacency[zone_id].add(neighbour_id)
 
-            if neighbour_id not in nodes and node["hops"] < max_hops:
+            # Keep walking through discovered neighbours until the entire visible
+            # map is represented. A distant zone can still affect expansion.
+            if neighbour_id not in nodes:
                 nodes[neighbour_id] = {
                     "expression": neighbour,
-                    "hops": node["hops"] + 1,
                     "owner": _classify_owner(runtime, neighbour),
                 }
                 queue.append(neighbour_id)
@@ -146,15 +213,17 @@ def discover_zone_graph(runtime, max_hops: int = 1) -> dict:
     }
 
 
-def observe_zone_graph(runtime, resource_keys: dict[str, str], graph=None) -> dict:
+def observe_zone_graph(runtime, resource_keys: dict[str, str], graph=None, catalogue=None) -> dict:
     """Return native zone features aligned with the discovered graph."""
     if graph is None:
         graph = discover_zone_graph(runtime)
+    if catalogue is None:
+        catalogue = load_zone_feature_schema()
 
     nodes = graph["nodes"]
     zone_ids = graph["zone_ids"]
     return {
-        "feature_names": list(FEATURE_NAMES),
+        "feature_names": BASE_FEATURE_NAMES + catalogue["feature_ids"],
         "zone_ids": zone_ids,
         "x": [
             _zone_features(
@@ -162,8 +231,103 @@ def observe_zone_graph(runtime, resource_keys: dict[str, str], graph=None) -> di
                 nodes[zone_id]["expression"],
                 nodes[zone_id]["owner"],
                 resource_keys,
+                catalogue,
             )
             for zone_id in zone_ids
         ],
         "edge_index": graph["edge_index"],
+        "zone_feature_ids": catalogue["feature_ids"],
+        "zone_feature_schema_sha256": catalogue["schema_sha256"],
     }
+
+
+def summarize_zones(zones: dict) -> dict[str, dict]:
+    """Return a sparse, human-readable view of an already-built zone tensor."""
+    feature_names = zones["feature_names"]
+    zone_ids = zones["zone_ids"]
+    rows = zones["x"]
+    build_masks = zones.get("build_action_mask", [])
+    building_ids = zones.get("building_ids", [])
+
+    if len(zone_ids) != len(rows):
+        raise ValueError("Zone IDs and feature rows have different lengths.")
+    if build_masks and len(build_masks) != len(zone_ids):
+        raise ValueError("Zone IDs and build masks have different lengths.")
+
+    summary = {}
+    for row_index, (zone_id, row) in enumerate(zip(zone_ids, rows, strict=True)):
+        if len(feature_names) != len(row):
+            raise ValueError(f"Zone {zone_id} has an invalid feature row.")
+
+        values = dict(zip(feature_names, row, strict=True))
+        zone = {}
+        for owner in ("owned", "neutral", "allied_owned", "enemy_owned"):
+            if values[owner]:
+                zone["owner"] = owner
+                break
+
+        flags = [
+            name
+            for name, value in values.items()
+            if value and (name == "is_guarded" or name == "is_coastal" or name.startswith("has_"))
+        ]
+        if flags:
+            zone["flags"] = flags
+
+        zone["building_slots"] = {
+            "used": values["building_slots_used"],
+            "max": values["building_slots_max"],
+        }
+        resources = {
+            name.removesuffix("_remaining"): value
+            for name, value in values.items()
+            if name.endswith("_remaining") and value
+        }
+        if resources:
+            zone["resources"] = resources
+
+        buildings = {
+            name.removeprefix("building_"): value
+            for name, value in values.items()
+            if name.startswith("building_") and name not in {
+                "building_slots_used",
+                "building_slots_max",
+            } and value
+        }
+        if buildings:
+            zone["buildings"] = buildings
+        construction = {
+            name.removeprefix("construction_"): value
+            for name, value in values.items()
+            if name.startswith("construction_") and value
+        }
+        if construction:
+            zone["construction"] = construction
+
+        units = {}
+        for side in ("friendly", "enemy", "neutral"):
+            side_units = {
+                name.removeprefix(f"{side}_"): value
+                for name, value in values.items()
+                if name.startswith(f"{side}_") and value
+            }
+            if side_units:
+                units[side] = side_units
+        if units:
+            zone["units"] = units
+
+        if build_masks:
+            available = [
+                building_id
+                for building_id, allowed in zip(
+                    building_ids,
+                    build_masks[row_index],
+                    strict=True,
+                )
+                if allowed
+            ]
+            if available:
+                zone["buildable"] = available
+
+        summary[str(zone_id)] = zone
+    return summary

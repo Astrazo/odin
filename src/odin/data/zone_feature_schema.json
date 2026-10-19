@@ -1,0 +1,10 @@
+{
+  "features": [
+    {"id": "has_fields", "category": "food_opportunity", "engine_ids": ["Fertility"]},
+    {"id": "has_deer", "category": "food_opportunity", "engine_ids": ["DeerSpawner"]},
+    {"id": "has_forest", "category": "zone_modifier", "engine_ids": ["Grove"]},
+    {"id": "has_shipwreck", "category": "scoutable_feature", "engine_ids": ["BrokenShores"]},
+    {"id": "has_geyser", "category": "zone_modifier", "engine_ids": ["Geyser"]},
+    {"id": "has_runestone", "category": "assignable_feature", "engine_ids": ["RuneStone"]}
+  ]
+}

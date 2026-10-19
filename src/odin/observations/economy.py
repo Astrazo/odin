@@ -32,7 +32,7 @@ FEATURE_NAMES += [
 
 def resolve_resource_keys(runtime) -> dict[str, str]:
     """Find the managed resource objects used as native getter arguments."""
-    required = {identifier for _, identifier in RESOURCES} | {"Population"}
+    required = {identifier for _, identifier in RESOURCES} | {"Building", "Population"}
     keys = {}
     for index in range(runtime.array_length("Data.resource.all")):
         expression = f"Data.resource.all[{index}].id"

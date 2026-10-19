@@ -7,7 +7,13 @@ from odin.bridge.session import NativeRuntime
 from odin.observations.buildings import load_building_schema, observe_buildings
 from odin.observations.economy import observe_economy, resolve_resource_keys
 from odin.observations.temporal import observe_pause, observe_temporal
-from odin.observations.zones import discover_zone_graph, observe_zone_graph
+from odin.observations.units import load_unit_schema, observe_units
+from odin.observations.zones import (
+    discover_zone_graph,
+    load_zone_feature_schema,
+    observe_zone_graph,
+    summarize_zones,
+)
 
 
 OBSERVATION_TENSORS = ("pause", "economy", "temporal", "zones")
@@ -33,6 +39,8 @@ class NorthgardEnv:
         self.tensors = tuple(dict.fromkeys(selected))
         self.resource_keys = None
         self.building_catalogue = None
+        self.unit_catalogue = None
+        self.zone_feature_catalogue = None
 
     def __enter__(self):
         try:
@@ -41,6 +49,8 @@ class NorthgardEnv:
                 self.resource_keys = resolve_resource_keys(self.runtime)
             if "zones" in self.tensors:
                 self.building_catalogue = load_building_schema()
+                self.unit_catalogue = load_unit_schema()
+                self.zone_feature_catalogue = load_zone_feature_schema()
             return self
         except BaseException:
             self.runtime.close()
@@ -69,18 +79,26 @@ class NorthgardEnv:
                 self.runtime,
                 self.resource_keys,
                 graph,
+                self.zone_feature_catalogue,
             )
             buildings = observe_buildings(
                 self.runtime,
                 self.building_catalogue,
                 graph,
             )
+            units = observe_units(
+                self.runtime,
+                self.unit_catalogue,
+                graph,
+            )
             zones["feature_names"].extend(buildings["feature_names"])
+            zones["feature_names"].extend(units["feature_names"])
             zones["x"] = [
-                zone_row + building_row
-                for zone_row, building_row in zip(
+                zone_row + building_row + unit_row
+                for zone_row, building_row, unit_row in zip(
                     zones["x"],
                     buildings["x"],
+                    units["x"],
                     strict=True,
                 )
             ]
@@ -88,6 +106,11 @@ class NorthgardEnv:
             zones["building_schema_sha256"] = buildings["schema_sha256"]
             zones["build_action_mask"] = buildings["build_action_mask"]
             zones["unmapped_buildings"] = buildings["unmapped_buildings"]
+            zones["unit_ids"] = units["unit_ids"]
+            zones["neutral_unit_ids"] = units["neutral_unit_ids"]
+            zones["unit_schema_sha256"] = units["schema_sha256"]
+            zones["unmapped_units"] = units["unmapped_units"]
+            zones["summary"] = summarize_zones(zones)
             observation["zones"] = zones
         return observation
 

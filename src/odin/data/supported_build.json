@@ -50,8 +50,27 @@
       "kinds": [11],
       "result": "ptr"
     },
+    "unit_is_dead": {
+      "function_index": 4248,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "bool"
+    },
+    "zone_has_hostility": {
+      "function_index": 3206,
+      "arguments": ["ptr", "ptr", "ptr", "ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 19, 19, 19, 19],
+      "null_only": [2, 3, 4, 5],
+      "result": "bool"
+    },
     "has_fish": {
       "function_index": 3192,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "bool"
+    },
+    "zone_has_coast": {
+      "function_index": 3334,
       "arguments": ["ptr"],
       "kinds": [11],
       "result": "bool"
@@ -67,6 +86,20 @@
       "arguments": ["ptr", "ptr"],
       "kinds": [11, 11],
       "result": "f64"
+    },
+    "get_current_production": {
+      "function_index": 3377,
+      "arguments": ["ptr", "ptr", "ptr", "ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 19, 19, 19, 19],
+      "null_only": [2, 3, 4, 5],
+      "result": "i32"
+    },
+    "get_max_production": {
+      "function_index": 3378,
+      "arguments": ["ptr", "ptr", "ptr", "ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 19, 19, 11, 19],
+      "null_only": [2, 3, 4, 5],
+      "result": "i32"
     },
     "building_is_player_built": {
       "function_index": 5767,

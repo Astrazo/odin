@@ -8,7 +8,7 @@ from odin.observations.economy import FEATURE_NAMES, RESOURCES, observe_economy,
 
 class FakeRuntime:
     def __init__(self):
-        self.identifiers = [identifier for _, identifier in RESOURCES] + ["Population"]
+        self.identifiers = [identifier for _, identifier in RESOURCES] + ["Building", "Population"]
         self.native_calls = []
 
     def array_length(self, expression):
