@@ -317,6 +317,13 @@ def summarize_zones(zones: dict) -> dict[str, dict]:
         }
         if construction:
             zone["construction"] = construction
+        unassigned = {
+            name.removeprefix("unassigned_construction_"): value
+            for name, value in values.items()
+            if name.startswith("unassigned_construction_") and value
+        }
+        if unassigned:
+            zone["unassigned_construction"] = unassigned
 
         units = {}
         for side in ("friendly", "enemy", "neutral"):

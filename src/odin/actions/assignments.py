@@ -5,7 +5,8 @@ import json
 from odin.actions.players import require_offline_host, require_paused_bot, resolve_player
 
 
-def _find_unit(runtime, unit_id: int, player: str) -> str:
+def find_owned_unit(runtime, unit_id: int, player: str) -> str:
+    """Resolve an owned unit UID for validation and assignment dispatch."""
     for index in range(runtime.array_length(f"{player}.units")):
         unit = f"{player}.units[{index}]"
         if int(runtime.evaluate(f"{unit}.__uid")) != unit_id:
@@ -16,7 +17,8 @@ def _find_unit(runtime, unit_id: int, player: str) -> str:
     raise ValueError(f"Owned unit {unit_id} was not found.")
 
 
-def _find_building(runtime, building_id: int, player: str) -> str:
+def find_owned_building(runtime, building_id: int, player: str) -> str:
+    """Resolve an owned building UID for assignment and location lookup."""
     for zone_index in range(runtime.array_length(f"{player}.zones")):
         zone = f"{player}.zones[{zone_index}]"
         if runtime.call_native(f"{zone}.getOwner() == {player}") != "true":
@@ -38,8 +40,8 @@ def preview_assignment(
     game itself performs before accepting ``UnitAction.AssignTo``.
     """
     player = resolve_player(runtime, player_id)
-    unit = _find_unit(runtime, unit_id, player)
-    building = _find_building(runtime, building_id, player)
+    unit = find_owned_unit(runtime, unit_id, player)
+    building = find_owned_building(runtime, building_id, player)
     unit_kind = json.loads(runtime.evaluate(f"{unit}.kind"))
     building_kind = json.loads(runtime.evaluate(f"{building}.kind"))
     allowed = runtime.call_native(
@@ -76,8 +78,8 @@ def assign_to_building(
         raise RuntimeError("Northgard rejected this unit/building pair before dispatch.")
 
     player = resolve_player(runtime, player_id)
-    unit = _find_unit(runtime, unit_id, player)
-    building = _find_building(runtime, building_id, player)
+    unit = find_owned_unit(runtime, unit_id, player)
+    building = find_owned_building(runtime, building_id, player)
     result = runtime.call_native(f"this.script.assign({unit}, {building})")
     if result != "true":
         raise RuntimeError("Northgard rejected the assignment.")

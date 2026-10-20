@@ -1,5 +1,93 @@
 # Construction staffing and building identity investigation
 
+## Why retain explicit worker selection
+
+Worker allocation has an economic cost. Even a villager gathering Food gives
+up production while travelling and building. If no suitable villager is
+available, choosing between waiting and diverting a specialist changes which
+resource production is interrupted. A nearest-worker rule cannot express that
+tradeoff on its own.
+
+We are keeping profession/zone assignment, the internal ID map and construction
+staffing observations so the policy can make that choice. Native assignment
+validation still decides which workers are eligible. A deterministic selection
+rule can be compared later as a baseline; it is not the default introduced here.
+
+This is a design hypothesis, not evidence that the extra inputs improve wins.
+The practical checks are whether worker choices change under different resource
+shortages, whether sites get completed, and whether the economy and eventual
+game results improve relative to the simpler baseline. Further observation
+detail needs a concrete decision it enables before we add it.
+
+## Implementation update — 21 October 2026
+
+The worker source zone is optional. With `--from-job` but no `--from-zone`,
+assignment and preview use the target building's current zone. An explicit
+source zone overrides that default. If the local worker group is empty or
+ineligible, no worker from another zone is substituted. Semantic destinations
+still require `--zone`; numeric building UIDs provide their own zone.
+
+Both worker and destination resolution are implemented in `actions/workers.py`.
+`assign --from-job PROFESSION --from-zone SOURCE --building FAMILY --zone TARGET`
+resolves both current native identities. Add `--construction` to select an
+unfinished site; completed buildings are the default. It prefers unstaffed
+construction, then uses building UID and worker UID order among eligible pairs.
+It never substitutes another family, destination zone, construction state,
+profession or source zone. Fresh resolution handles completion's UID change
+without accidentally treating a completed building as the requested construction.
+This keeps the economic choice at the profession/zone level without adding
+per-worker numeric features. Read-only preview supports the same selector and
+existing-site assignment supports bot selection. A read-only live check on
+21 October failed during debugger initialization in the sandbox; the retry
+outside the sandbox timed out during attach. No assignment was sent, so native
+validation of semantic targeting remains pending. No automated tests were added
+for this work, per the project workflow.
+
+The stale adapter connection was subsequently cleared after verifying that
+Northgard had no active Windows debugger. Read-only listings now work. The
+current match has a completed ScoutCamp and villagers in zone39. The subsequent
+semantic preview was not run because permission was declined, so pair selection
+and dispatch remain unverified live. Misspelled CLI professions are now rejected
+before opening the debugger, with a spelling suggestion where possible.
+
+Build and assign are separate actions. Build places a site without an Odin
+worker order. The game can automatically staff it when simulation advances.
+The next observation exposes remaining unstaffed sites; the policy can choose
+to wait or send a separate profession/zone assignment. No automatic fallback
+assignment is scheduled. The earlier combined-action path has been removed.
+
+The investigation below describes the original behaviour on 20 October. The
+current implementation provides:
+
+- `build --zone ZONE --building FAMILY` / `NorthgardEnv.build(zone, family)`
+  only place the selected building. Assignment uses the separate resolver and
+  normal native validation/dispatch path.
+- Site identity is resolved from the before/after zone UID sets, accepting only
+  one new Construction with the requested exact engine kind. Placement is
+  invoked once. Unknown/ambiguous identity leaves the placed result intact with
+  an error field and no confirmed construction UID. There is no automatic retry.
+- Build returns placement and site identity only. Staffing is read through
+  observations; it does not trigger an Odin assignment automatically.
+- Owned construction IDs and assigned unit IDs appear in
+  `zones.construction_sites`. Numeric `unassigned_construction_<family>` counts
+  and summary fields make missing explicit assignments visible per zone.
+- Assignments are collected from living owned units across all zones, so a
+  worker ordered from another zone does not look absent. This reads `assignTo`,
+  not current activity, progress or native path success. Automatic assignment
+  may appear on the next simulation update, especially after a paused placement.
+- Each observation reads fresh site identities; completion removes the old UID
+  from construction targets. No persistent completion tracker is implemented.
+
+The existing assignment action remains available for a later policy decision.
+The learner, candidate-slot action encoding and reward function are not yet
+implemented. Site counts are numeric policy inputs; runtime UIDs are target
+identities rather than meaningful scalar features. Building progress, linked
+job state, confirmed arrival, eligibility masks and path-cost ranking remain
+future work. Live placement/remote-worker/completion validation remains pending;
+no Northgard process was available during implementation.
+
+## Original investigation
+
 20 October 2026. This is an investigation and design recommendation, not a
 change to build behaviour. No new game orders, placements, worker transfers or
 native allowlist entries were added. No Northgard process was available for a
@@ -137,7 +225,7 @@ the fact that a worker is in a neighbouring zone does not prove a cheap/safe
 path. A busy worker's eligibility to build/retrain must come from the game's
 validator, not an assumption that every civilian specialist is interchangeable.
 
-## Suggested next implementation, not yet applied
+## Observation follow-ups from the investigation
 
 First expose construction and worker information without changing allocation:
 
@@ -153,18 +241,13 @@ First expose construction and worker information without changing allocation:
   feasibility. Candidate ranking can start with a labelled distance estimate;
   avoid claiming it is the shortest native route.
 
-Then support an explicit chosen builder as an optional argument to build. One
-policy decision can choose `(zone, building family, worker ID)`; Odin places
-the site once and issues the normal assignment to that returned site. After
-placement, assignment can still fail, so report `placed` and `builder_assigned`
-separately and never repeat placement as a retry.
-
-Keep site-only placement and existing-site assignment available. They allow the
-model to wait or reallocate a worker later without deciding to place the same
-building again. Any eventual free-worker convenience mode should return a clear
-`needs_builder`/pending result when no candidate is available; it should not
-silently steal a production worker, reject an otherwise legal build solely for
-that reason, or claim the construction is staffed.
+Keep placement and existing-site assignment separate. One decision chooses the
+building family and destination zone. After simulation advances, a later policy
+decision can choose a worker profession and source zone for an unstaffed site.
+The resolver translates that group into a current eligible worker UID and sends
+the normal assignment. It does not place another building, schedule a fallback
+or decide that waiting is wrong. Missing workers do not invalidate a legal
+placement; an unavailable assignment group is reported by the assign action.
 
 The proposed eligibility reads have inspected native candidates:
 `Unit.get_isVillager` f4239, `Unit.isControlable(null)` f4275 and

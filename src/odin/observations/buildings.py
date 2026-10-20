@@ -4,6 +4,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from odin.observations.construction import describe_construction_site, read_builder_assignments
+
 
 BUILDING_SCHEMA_PATH = Path(__file__).parents[1] / "data" / "building_schema.json"
 
@@ -83,6 +85,9 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
     }
     completed_rows = []
     construction_rows = []
+    unassigned_rows = []
+    construction_sites = []
+    assignments = None
     action_rows = []
     unmapped = set()
 
@@ -91,6 +96,7 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
         zone = node["expression"]
         completed = [0] * len(building_ids)
         construction = [0] * len(building_ids)
+        unassigned = [0] * len(building_ids)
 
         for index in range(runtime.array_length(f"{zone}.buildings")):
             building = f"{zone}.buildings[{index}]"
@@ -104,6 +110,15 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
                     construction[column] += 1
                 elif real_id is not None:
                     unmapped.add((zone_id, "construction", real_id))
+                if node["owner"]["owned"]:
+                    if assignments is None:
+                        assignments = read_builder_assignments(runtime)
+                    site = describe_construction_site(
+                        runtime, building, zone_id, real_id, catalogue, assignments,
+                    )
+                    construction_sites.append(site)
+                    if column is not None and not site["has_assigned_worker"]:
+                        unassigned[column] += 1
             else:
                 player_built = _call_bool(runtime, f"{building}.isPlayerBuilt()")
                 base_kind = json.loads(runtime.evaluate(f"{building}.baseKind"))
@@ -124,6 +139,7 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
 
         completed_rows.append(completed)
         construction_rows.append(construction)
+        unassigned_rows.append(unassigned)
         action_rows.append([
             1.0 if any(
                 engine_id in available
@@ -140,12 +156,16 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
         ] + [
             f"construction_{identifier}"
             for identifier in building_ids
+        ] + [
+            f"unassigned_construction_{identifier}"
+            for identifier in building_ids
         ],
         "x": [
-            completed + construction
-            for completed, construction in zip(
+            completed + construction + unassigned
+            for completed, construction, unassigned in zip(
                 completed_rows,
                 construction_rows,
+                unassigned_rows,
                 strict=True,
             )
         ],
@@ -153,6 +173,7 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
         "schema_sha256": catalogue["schema_sha256"],
         "zone_ids": graph["zone_ids"],
         "build_action_mask": action_rows,
+        "construction_sites": sorted(construction_sites, key=lambda site: site["building_id"]),
         "unmapped_buildings": [
             {"zone_id": zone_id, "source": source, "engine_id": engine_id}
             for zone_id, source, engine_id in sorted(unmapped)

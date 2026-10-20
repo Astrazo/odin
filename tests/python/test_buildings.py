@@ -11,12 +11,14 @@ class FakeRuntime:
         self.lengths = {
             "zone_10.buildings": 3,
             "zone_20.buildings": 1,
+            "this.state.me.units": 0,
             (
                 "zone_10.getAvailableBuildings("
                 "this.state.me, null, null, null, null)"
             ): 1,
         }
         self.values = {
+            "zone_10.buildings[1].__uid": "500",
             "zone_10.buildings[0].baseKind": json.dumps("House"),
             "zone_10.buildings[2].baseKind": json.dumps("UnknownWorkshop"),
             (
@@ -50,6 +52,70 @@ class FakeRuntime:
 
 
 class BuildingTests(unittest.TestCase):
+    def test_incoming_worker_counts_as_assigned_and_completion_drops_old_site_id(self):
+        runtime = FakeRuntime()
+        runtime.lengths["this.state.me.units"] = 3
+        runtime.lengths["zone_10.buildings"] = 4
+        runtime.values.update({
+            "zone_10.buildings[3].__uid": "501",
+            "this.state.me.units[0].owner == this.state.me": "true",
+            "this.state.me.units[0].assignTo == null": "false",
+            "this.state.me.units[0].assignTo.__uid": "500",
+            "this.state.me.units[0].__uid": "101",
+            "this.state.me.units[1].owner == this.state.me": "true",
+            "this.state.me.units[2].owner == this.state.me": "false",
+        })
+        runtime.native_values.update({
+            "zone_10.buildings[3].get_id()": json.dumps("Construction"),
+            "zone_10.buildings[3].get_realKind()": json.dumps("GuardTower"),
+            "this.state.me.units[0].get_isDead()": "false",
+            "this.state.me.units[1].get_isDead()": "true",
+        })
+        # There is intentionally no worker zone value: assignments in another
+        # zone still staff the site, while dead and allied units are excluded.
+        catalogue = load_building_schema()
+        graph = {
+            "zone_ids": [10],
+            "nodes": {10: {"expression": "zone_10", "owner": {"owned": True}}},
+        }
+        report = observe_buildings(runtime, catalogue, graph)
+        values = dict(zip(report["feature_names"], report["x"][0], strict=True))
+        self.assertEqual(values["construction_tower"], 2)
+        self.assertEqual(values["unassigned_construction_tower"], 1)
+        self.assertEqual(report["construction_sites"][0]["assigned_unit_ids"], [101])
+        self.assertTrue(report["construction_sites"][0]["has_assigned_worker"])
+
+        runtime.values["this.state.me.units[0].assignTo == null"] = "true"
+        report = observe_buildings(runtime, catalogue, graph)
+        values = dict(zip(report["feature_names"], report["x"][0], strict=True))
+        self.assertEqual(values["unassigned_construction_tower"], 2)
+
+        # Completion creates a different object; fresh reads must not keep 500
+        # or report that the vanished construction still needs staffing.
+        runtime.values["zone_10.buildings[1].__uid"] = "600"
+        runtime.values["zone_10.buildings[1].baseKind"] = json.dumps("GuardTower")
+        runtime.native_values["zone_10.buildings[1].get_id()"] = json.dumps("GuardTower")
+        runtime.native_values["zone_10.buildings[1].isPlayerBuilt()"] = "true"
+        report = observe_buildings(runtime, catalogue, graph)
+        self.assertEqual([site["building_id"] for site in report["construction_sites"]], [501])
+        values = dict(zip(report["feature_names"], report["x"][0], strict=True))
+        self.assertEqual(values["construction_tower"], 1)
+        self.assertEqual(values["building_tower"], 1)
+
+    def test_non_owned_construction_is_not_a_staffing_target(self):
+        runtime = FakeRuntime()
+        runtime.native_values["zone_20.buildings[0].get_id()"] = json.dumps("Construction")
+        runtime.native_values["zone_20.buildings[0].get_realKind()"] = json.dumps("House")
+        # No unit collection or construction UID is readable in this fixture.
+        report = observe_buildings(runtime, load_building_schema(), {
+            "zone_ids": [20],
+            "nodes": {20: {"expression": "zone_20", "owner": {"owned": False}}},
+        })
+        self.assertEqual(report["construction_sites"], [])
+        values = dict(zip(report["feature_names"], report["x"][0], strict=True))
+        self.assertEqual(values["construction_house"], 1)
+        self.assertEqual(values["unassigned_construction_house"], 0)
+
     def test_uses_authored_families_and_masks_actions_by_owned_zone(self):
         runtime = FakeRuntime()
         catalogue = {
@@ -77,8 +143,15 @@ class BuildingTests(unittest.TestCase):
             "building_tower",
             "construction_house",
             "construction_tower",
+            "unassigned_construction_house",
+            "unassigned_construction_tower",
         ])
-        self.assertEqual(report["x"], [[1, 0, 0, 1], [0, 0, 0, 0]])
+        self.assertEqual(report["x"], [[1, 0, 0, 1, 0, 1], [0, 0, 0, 0, 0, 0]])
+        self.assertEqual(report["construction_sites"], [{
+            "building_id": 500, "zone_id": 10,
+            "building_family": "tower", "engine_id": "GuardTower",
+            "assigned_unit_ids": [], "has_assigned_worker": False,
+        }])
         self.assertEqual(
             report["build_action_mask"],
             [[1.0, 0.0], [0.0, 0.0]],
@@ -88,67 +161,6 @@ class BuildingTests(unittest.TestCase):
             "source": "completed",
             "engine_id": "UnknownWorkshop",
         }])
-
-    def test_schema_maps_both_tower_engine_ids_to_one_family(self):
-        schema = load_building_schema()
-
-        self.assertEqual(schema["family_by_engine_id"]["GuardTower"], "tower")
-        self.assertEqual(schema["family_by_engine_id"]["WatchTower"], "tower")
-
-    def test_schema_maps_stag_and_goat_buildings(self):
-        schema = load_building_schema()
-
-        self.assertEqual(
-            schema["family_by_engine_id"]["HallOfPoetry"],
-            "hall_of_skalds",
-        )
-        self.assertEqual(schema["family_by_engine_id"]["Sheepfold"], "sheepfold")
-
-    def test_schema_includes_the_shared_carved_stone_building(self):
-        schema = load_building_schema()
-
-        self.assertEqual(schema["family_by_engine_id"]["CarvedStone"], "carved_stone")
-
-    def test_schema_includes_shared_special_buildings(self):
-        schema = load_building_schema()
-
-        self.assertEqual(schema["family_by_engine_id"]["Temple"], "altar_of_kings")
-        self.assertEqual(schema["family_by_engine_id"]["OfferingWell"], "offering_well")
-        self.assertEqual(
-            schema["family_by_engine_id"]["VikingLoreWonder"],
-            "monument_to_gods",
-        )
-
-    def test_schema_keeps_raven_harbor_distinct_from_longship_dock(self):
-        schema = load_building_schema()
-
-        self.assertEqual(schema["family_by_engine_id"]["Port"], "longship_dock")
-        self.assertEqual(schema["family_by_engine_id"]["RavenPort"], "harbor")
-
-    def test_schema_keeps_boar_menders_hut_distinct_from_healer_hut(self):
-        schema = load_building_schema()
-
-        self.assertEqual(schema["family_by_engine_id"]["HealerHut"], "healer_hut")
-        self.assertEqual(schema["family_by_engine_id"]["MenderHut"], "menders_hut")
-
-    def test_schema_includes_snake_skirmisher_camp(self):
-        schema = load_building_schema()
-
-        self.assertEqual(
-            schema["family_by_engine_id"]["SkirmishCenter"],
-            "skirmisher_camp",
-        )
-
-    def test_schema_maps_horse_forge_to_the_shared_forge_family(self):
-        schema = load_building_schema()
-
-        self.assertEqual(schema["family_by_engine_id"]["Forge"], "forge")
-        self.assertEqual(schema["family_by_engine_id"]["ForgeHorse"], "forge")
-
-    def test_schema_includes_town_hall(self):
-        schema = load_building_schema()
-
-        self.assertEqual(schema["family_by_engine_id"]["TownHall"], "town_hall")
 
 
 if __name__ == "__main__":

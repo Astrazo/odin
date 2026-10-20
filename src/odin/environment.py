@@ -7,6 +7,7 @@ from odin.actions.buildings import build_building
 from odin.actions.colonisation import colonise_zone
 from odin.actions.pause import pause_game
 from odin.actions.scouting import scout_zone
+from odin.actions.workers import assign_worker_to_building
 from odin.bridge.session import NativeRuntime
 from odin.observations.buildings import load_building_schema, observe_buildings
 from odin.observations.economy import observe_economy, resolve_resource_keys
@@ -110,6 +111,7 @@ class NorthgardEnv:
             zones["building_schema_sha256"] = buildings["schema_sha256"]
             zones["build_action_mask"] = buildings["build_action_mask"]
             zones["unmapped_buildings"] = buildings["unmapped_buildings"]
+            zones["construction_sites"] = buildings["construction_sites"]
             zones["unit_ids"] = units["unit_ids"]
             zones["neutral_unit_ids"] = units["neutral_unit_ids"]
             zones["unit_schema_sha256"] = units["schema_sha256"]
@@ -138,7 +140,7 @@ class NorthgardEnv:
         return self.act(pause_game)
 
     def build(self, zone_id: int, building_id: str) -> dict:
-        """Request one reviewed building using Northgard's normal placement path."""
+        """Place a building; observe staffing after advancing the simulation."""
         return self.act(
             build_building,
             zone_id,
@@ -153,6 +155,18 @@ class NorthgardEnv:
     def scout(self, unit_id: int, zone_id: int) -> dict:
         """Send one eligible scout to an undiscovered neighbouring zone."""
         return self.act(scout_zone, unit_id, zone_id)
+
+    def assign_worker(
+        self, job: str, source_zone_id: int | None = None, building_id: int | str | None = None,
+        *, target_zone_id: int | None = None, construction: bool = False,
+        player_id: int | None = None,
+    ) -> dict:
+        """Assign by profession/source zone and building family/destination zone."""
+        return self.act(
+            assign_worker_to_building, job, source_zone_id, building_id,
+            target_zone_id=target_zone_id, construction=construction,
+            player_id=player_id,
+        )
 
     def colonise(self, zone_id: int, *, player_id: int | None = None) -> dict:
         """Request normal colonisation for the selected player."""

@@ -10,10 +10,15 @@ class FakeRuntime:
     def __init__(self, available=("House",)):
         self.available = available
         self.calls = []
+        self.sites = [400]  # An existing site of the same family must be ignored.
+        self.placed_ids = [500]
+        self.placement_result = "<ent.Building>"
 
     def array_length(self, expression):
         if expression == "this.state.me.zones":
             return 1
+        if expression == "this.state.me.zones[0].buildings":
+            return len(self.sites)
         if "getAvailableBuildings" in expression:
             return len(self.available)
         raise AssertionError(expression)
@@ -21,6 +26,9 @@ class FakeRuntime:
     def evaluate(self, expression):
         if expression == "this.state.me.zones[0].id":
             return "92"
+        if expression.startswith("this.state.me.zones[0].buildings[") and expression.endswith(".__uid"):
+            index = int(expression.split(".buildings[")[1].split("]")[0])
+            return str(self.sites[index])
         for index, identifier in enumerate(self.available):
             if expression.endswith(f"[{index}].id"):
                 return json.dumps(identifier)
@@ -31,7 +39,13 @@ class FakeRuntime:
         if expression == "this.state.me.zones[0].getOwner() == this.state.me":
             return "true"
         if expression.startswith("Tools.buildInZone("):
-            return "<ent.Building>"
+            if self.placement_result != "null":
+                self.sites.extend(self.placed_ids)
+            return self.placement_result
+        if expression.endswith(".get_id()"):
+            return json.dumps("Construction")
+        if expression.endswith(".get_realKind()"):
+            return json.dumps(self.available[0])
         raise AssertionError(expression)
 
 
@@ -52,13 +66,16 @@ class BuildingActionTests(unittest.TestCase):
             "building_id": "house",
             "engine_id": "House",
             "requested": True,
+            "placed": True,
+            "construction_id": 500,
         })
-        self.assertEqual(runtime.calls[-1], (
+        placements = [call for call in runtime.calls if call.startswith("Tools.buildInZone(")]
+        self.assertEqual(placements, [(
             "Tools.buildInZone(this.state.me, "
             "this.state.me.zones[0].getAvailableBuildings("
             "this.state.me, null, null, null, null)[0], "
             "this.state.me.zones[0], null)"
-        ))
+        )])
 
     def test_rejects_a_family_that_is_not_currently_available(self):
         runtime = FakeRuntime()
@@ -76,3 +93,12 @@ class BuildingActionTests(unittest.TestCase):
         result = build_building(runtime, 92, "scout-camp", CATALOGUE)
 
         self.assertEqual(result["building_id"], "scout_camp")
+
+    def test_ambiguous_new_sites_do_not_dispatch_or_retry(self):
+        runtime = FakeRuntime()
+        runtime.placed_ids = [500, 501]
+        result = build_building(runtime, 92, "house", CATALOGUE)
+        self.assertTrue(result["placed"])
+        self.assertIsNone(result["construction_id"])
+        self.assertIn("uniquely", result["construction_error"])
+        self.assertEqual(sum(call.startswith("Tools.buildInZone(") for call in runtime.calls), 1)

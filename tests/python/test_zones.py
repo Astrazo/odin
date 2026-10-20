@@ -143,7 +143,7 @@ class ZoneGraphTests(unittest.TestCase):
                 "is_coastal", "has_fish", "stone_remaining", "iron_remaining",
                 "has_deer", "building_town_hall", "building_house",
                 "construction_house", "friendly_villager", "enemy_scout",
-                "neutral_wolf",
+                "neutral_wolf", "unassigned_construction_house",
             ],
             "zone_ids": [92],
             "x": [[
@@ -152,7 +152,7 @@ class ZoneGraphTests(unittest.TestCase):
                 1.0, 0.0, 0.0, 15.0,
                 1.0, 1, 0,
                 1, 4, 1,
-                2,
+                2, 1,
             ]],
             "building_ids": ["town_hall", "house"],
             "build_action_mask": [[0.0, 1.0]],
@@ -166,6 +166,7 @@ class ZoneGraphTests(unittest.TestCase):
                 "resources": {"iron": 15.0},
                 "buildings": {"town_hall": 1},
                 "construction": {"house": 1},
+                "unassigned_construction": {"house": 1},
                 "units": {
                     "friendly": {"villager": 4},
                     "enemy": {"scout": 1},

@@ -2,6 +2,7 @@
 
 import json
 from datetime import datetime
+from difflib import get_close_matches
 from pathlib import Path
 
 import typer
@@ -10,10 +11,12 @@ from odin.actions.pause import pause_game
 from odin.actions.assignments import assign_to_building, preview_assignment
 from odin.actions.players import list_players, set_ai_orders
 from odin.actions.colonisation import colonise_zone, list_colonisation_zones, preview_colonisation
+from odin.actions.workers import resolve_assignment
 from odin.bridge.launch import launch_game
 from odin.bridge.session import NativeRuntime
 from odin.environment import NorthgardEnv, OBSERVATION_TENSORS
 from odin.observations.temporal import observe_pause
+from odin.observations.units import load_unit_schema
 from odin.observations.zones import discover_zone_graph
 from odin.tools.ids import list_player_ids, list_scout_ids
 from odin.tools.unit_jobs import list_unit_jobs
@@ -26,6 +29,21 @@ DEFAULT_EXE = Path(r"C:\Program Files (x86)\Steam\steamapps\common\Northgard\Nor
 ADAPTER = Path(r"C:\Users\Josh\.vscode\extensions\haxefoundation.haxe-hl-2.0.0\adapter.js")
 DEBUG_PORT = 6112
 LOG_DIR = Path("artifacts/runs")
+
+
+def parse_worker_job(value: str | None) -> str | None:
+    """Reject unknown professions before opening a game debugger connection."""
+    if value is None:
+        return None
+    job = value.lower().replace("-", "_")
+    professions = load_unit_schema()["unit_ids"]
+    if job not in professions:
+        message = f"Unknown profession {value!r}."
+        matches = get_close_matches(job, professions, n=1)
+        if matches:
+            message += f" Did you mean {matches[0]!r}?"
+        raise typer.BadParameter(message)
+    return job
 
 
 @app.callback()
@@ -60,20 +78,38 @@ def build(
     zone_id: int = typer.Option(..., "--zone", help="Owned zone ID."),
     building_id: str = typer.Option(..., "--building", help="Reviewed building family ID."),
 ) -> None:
-    """Request one building through Northgard's normal placement code."""
+    """Place one building; choose any worker assignment in a later action."""
     with NorthgardEnv(ADAPTER, DEFAULT_EXE, DEBUG_PORT, tensors=("zones",)) as env:
         typer.echo(json.dumps(env.build(zone_id, building_id)))
 
 
 @app.command()
 def assign(
-    unit_id: int = typer.Option(..., "--unit", help="Owned unit runtime ID."),
-    building_id: int = typer.Option(..., "--building", help="Owned building runtime ID."),
+    unit_id: int | None = typer.Option(None, "--unit", help="Owned unit runtime ID, or choose --from-job."),
+    building_id: str = typer.Option(..., "--building", help="Building family, e.g. scout_camp; a runtime UID also works for debugging."),
     player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+    worker_job: str | None = typer.Option(None, "--from-job", callback=parse_worker_job, help="Worker profession to divert, e.g. woodcutter."),
+    source_zone_id: int | None = typer.Option(None, "--from-zone", help="Source zone for --from-job; defaults to the target building's zone."),
+    target_zone_id: int | None = typer.Option(None, "--zone", help="Destination zone for a building family."),
+    construction: bool = typer.Option(False, "--construction", help="Target construction of this family; defaults to completed buildings."),
 ) -> None:
     """Validate and assign one owned unit to one owned building."""
+    if worker_job is None and source_zone_id is not None:
+        raise typer.BadParameter("Supply --from-job when using --from-zone.")
+    if (unit_id is None) == (worker_job is None):
+        raise typer.BadParameter("Choose either --unit or --from-job.")
+    if not building_id.isdecimal() and target_zone_id is None:
+        raise typer.BadParameter("Supply --zone with a building family.")
+    if building_id.isdecimal() and (target_zone_id is not None or construction):
+        raise typer.BadParameter("Use --zone/--construction with a building family, not a UID.")
     with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
-        typer.echo(json.dumps(assign_to_building(runtime, unit_id, building_id, player_id=player_id)))
+        selection = resolve_assignment(
+            runtime, building_id, job=worker_job, source_zone_id=source_zone_id,
+            unit_id=unit_id, target_zone_id=target_zone_id,
+            construction=construction, player_id=player_id,
+        )
+        result = assign_to_building(runtime, selection["unit_id"], selection["building_id"], player_id=player_id)
+        typer.echo(json.dumps({**selection, **result}))
 
 
 @app.command("ai-stop")
@@ -183,13 +219,33 @@ def buildings(
 
 @tools_app.command("assign-preview")
 def assign_preview(
-    unit_id: int = typer.Option(..., "--unit", help="Owned unit runtime ID."),
-    building_id: int = typer.Option(..., "--building", help="Owned building runtime ID."),
+    unit_id: int | None = typer.Option(None, "--unit", help="Owned unit runtime ID, or choose --from-job."),
+    building_id: str = typer.Option(..., "--building", help="Building family, e.g. scout_camp; a runtime UID also works for debugging."),
     player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+    worker_job: str | None = typer.Option(None, "--from-job", callback=parse_worker_job, help="Worker profession, e.g. woodcutter."),
+    source_zone_id: int | None = typer.Option(None, "--from-zone", help="Source zone for --from-job; defaults to the target building's zone."),
+    target_zone_id: int | None = typer.Option(None, "--zone", help="Destination zone for a building family."),
+    construction: bool = typer.Option(False, "--construction", help="Target construction of this family; defaults to completed buildings."),
 ) -> None:
     """Show whether Northgard would accept one unit/building assignment."""
+    if worker_job is None and source_zone_id is not None:
+        raise typer.BadParameter("Supply --from-job when using --from-zone.")
+    if (unit_id is None) == (worker_job is None):
+        raise typer.BadParameter("Choose either --unit or --from-job.")
+    if not building_id.isdecimal() and target_zone_id is None:
+        raise typer.BadParameter("Supply --zone with a building family.")
+    if building_id.isdecimal() and (target_zone_id is not None or construction):
+        raise typer.BadParameter("Use --zone/--construction with a building family, not a UID.")
     with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
-        typer.echo(json.dumps(preview_assignment(runtime, unit_id, building_id, player_id=player_id), indent=2))
+        if unit_id is not None and building_id.isdecimal():
+            result = preview_assignment(runtime, unit_id, int(building_id), player_id=player_id)
+        else:
+            result = resolve_assignment(
+                runtime, building_id, job=worker_job, source_zone_id=source_zone_id,
+                unit_id=unit_id, target_zone_id=target_zone_id,
+                construction=construction, player_id=player_id,
+            )
+        typer.echo(json.dumps(result, indent=2))
 
 
 def format_unmapped_buildings(observation: dict) -> str | None:

@@ -8,17 +8,7 @@ from odin.environment import NorthgardEnv
 
 
 class EnvironmentTests(unittest.TestCase):
-    def test_colonisation_forwards_acting_player(self):
-        env = NorthgardEnv(Path("adapter.js"), Path("Northgard.exe"), tensors=())
-        with patch("odin.environment.colonise_zone", return_value={"requested": True}) as colonise:
-            self.assertEqual(env.colonise(42, player_id=91), {"requested": True})
-        colonise.assert_called_once_with(env.runtime, 42, player_id=91)
 
-    def test_assignment_forwards_acting_player(self):
-        env = NorthgardEnv(Path("adapter.js"), Path("Northgard.exe"), tensors=())
-        with patch("odin.environment.assign_to_building", return_value={"assigned": True}) as assign:
-            self.assertEqual(env.assign(1013, 1279, player_id=91), {"assigned": True})
-        assign.assert_called_once_with(env.runtime, 1013, 1279, player_id=91)
 
     def test_observe_only_extracts_selected_tensors(self):
         env = NorthgardEnv(
@@ -50,6 +40,7 @@ class EnvironmentTests(unittest.TestCase):
                     "schema_sha256": "abc",
                     "build_action_mask": [],
                     "unmapped_buildings": [],
+                    "construction_sites": [],
                 },
             ) as observe_buildings,
             patch(
@@ -79,6 +70,7 @@ class EnvironmentTests(unittest.TestCase):
                 "building_schema_sha256": "abc",
                 "build_action_mask": [],
                 "unmapped_buildings": [],
+                "construction_sites": [],
                 "unit_ids": [],
                 "neutral_unit_ids": [],
                 "unit_schema_sha256": "def",

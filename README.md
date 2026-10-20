@@ -1,5 +1,10 @@
 # Odin
 
+This is an experimental project. The default development loop is to change the
+code, check behaviour in Northgard, inspect the logs and iterate. Add automated
+tests only when explicitly requested; existing tests cover selected behaviours
+and are not a substitute for observing the game.
+
 Loop
 
 1. Open one debugger connection
@@ -106,6 +111,96 @@ zones85/92 were eligible for Food20, while zone89 was `Occupied`. No live paid
 request was sent during implementation. See [native path and validation notes](docs/colonisation.md).
 
 ## Worker assignment and bot players
+
+Build and assign are separate policy actions. Build places the site and leaves
+normal local auto-assignment to Northgard. After advancing the simulation, the
+policy observes construction staffing and can choose to assign a worker if a
+site is still unstaffed. Odin does not schedule a fallback assignment itself.
+
+```powershell
+uv run odin build --zone 35 --building house
+# After simulation advances, inspect the current site's staffing.
+uv run odin tools assign-preview --building house --zone 35 --construction --from-job villager --from-zone 4
+uv run odin assign --building house --zone 35 --construction --from-job villager --from-zone 4
+# Assign to a completed scout camp, converting an eligible worker normally:
+uv run odin assign --building scout_camp --zone 35 --from-job woodcutter --from-zone 7
+# Use a villager already in the scout camp's zone:
+uv run odin assign --building scout_camp --zone 35 --from-job villager
+```
+
+`--from-zone` is where the worker currently is; `--zone` is where the target
+building is. Omit `--from-zone` to use the target building's zone. This also
+works with a numeric building UID: Odin reads its current zone. An empty local
+worker group reports an error; it does not choose a worker from another zone.
+`--construction` selects unfinished sites; the default selects
+completed buildings. These choices correspond to `construction_<family>` and
+`building_<family>` in the observations. They never fall back to another zone,
+family or construction state. A destination zone is required with a family.
+
+Profession names use the zone
+count vocabulary, such as `villager`, `woodcutter` or `farmer`. Assignment and
+preview also accept `--player PLAYER_UID` for bots. Build uses the local player
+and accepts only the destination zone and building family.
+
+`resolve_worker(runtime, job, source_zone_id, building_id=..., player_id=...)`
+reads a fresh owned-unit job map and considers living workers in the requested
+group. With a target building, it checks the native assignment validator in
+ascending UID order and chooses the first eligible match. Without a target,
+it chooses the lowest matching UID. This is a stable tie-break, not an economic
+ranking. It can divert an already-working unit of the requested profession.
+It never substitutes another profession or source zone. An empty or ineligible
+group produces an error without dispatching an assignment. Only one assignment
+order is sent; rejected orders are not retried against other workers.
+
+`resolve_assignment` resolves both worker and building groups. Within a zone,
+it prefers unstaffed construction sites (including incoming assignments when
+checking staffing), then uses building UID and worker UID order to find an
+eligible pair. Completed buildings use UID order and native eligibility checks,
+so a rejected/full building does not prevent trying another matching building.
+Native eligibility still decides whether a profession can be reassigned to the
+chosen building. The result includes both resolved UIDs for debugging.
+
+Python callers use `env.build(35, "house")`, advance with `env.step()`, then
+optionally call
+`env.assign_worker("villager", 4, "house", target_zone_id=35, construction=True)` in a later
+policy decision. The policy chooses whether and when to assign; the resolver
+only translates the chosen profession/source zone into an executable unit ID.
+For a worker in the building's zone, use
+`env.assign_worker("villager", building_id="house", target_zone_id=35, construction=True)`.
+Numeric `--building BUILDING_UID` and `--unit UNIT_UID` remain debug overrides.
+This resolver adds
+no numeric observation features.
+
+Build returns `placed: true` and `construction_id`, the new site's runtime UID;
+`building_id` remains the semantic family name. A `construction_error` means
+placement returned an object but its identity could not be uniquely confirmed.
+Do not repeat placement because subsequent inspection failed. Staffing belongs
+to observations after simulation advances, rather than the build response.
+
+Zone observations now expose:
+
+- `unassigned_construction_<family>`: owned construction count with no living
+  owned worker explicitly assigned, alongside the existing construction counts.
+- `construction_sites`: owned site IDs, zone, family, expected engine type,
+  `assigned_unit_ids` and `has_assigned_worker`, including unmapped families.
+- `summary[ZONE_ID].unassigned_construction`: the same nonzero counts by family.
+
+Assignments are read across the whole player's unit collection, so a worker
+travelling from another zone counts as assigned. A link does not prove arrival,
+path safety or construction progress. No link immediately after placement can
+be temporary: native automatic job selection happens on subsequent simulation
+updates. These are observations, not a command to assign or a forced penalty.
+
+The policy learns two decisions: what/where to build, and whether/when to
+reallocate a worker after observing an unstaffed site. The staffing features
+make the second decision visible to a future RL learner; internal ID maps
+identify action targets. Odin does not yet implement a learner or rewards, so
+these features alone do not teach worker allocation. Training should value the
+resulting economy and game outcomes; waiting can be a deliberate choice.
+
+Completion replaces the construction object and changes its UID. Each fresh
+observation lists current sites only; an old construction ID is not a handle
+for the finished building, and disappearance alone is not proof of completion.
 
 Read a map of living owned unit IDs to their current profession and location:
 
