@@ -247,6 +247,88 @@
       "arguments": ["ptr"],
       "kinds": [11],
       "result": "ptr"
+    },
+    "tech_catalogue": {
+      "function_index": 13077,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "ptr"
+    },
+    "tech_has": {
+      "function_index": 13059,
+      "arguments": ["ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 14],
+      "result": "bool",
+      "null_only": [2]
+    },
+    "tech_can_unlock": {
+      "function_index": 13086,
+      "arguments": ["ptr", "ptr"],
+      "kinds": [11, 11],
+      "result": "bool"
+    },
+    "tech_can_pay": {
+      "function_index": 13068,
+      "arguments": ["ptr", "ptr"],
+      "kinds": [11, 15],
+      "result": "bool"
+    },
+    "tech_cost": {
+      "function_index": 13076,
+      "arguments": ["ptr", "ptr"],
+      "kinds": [11, 15],
+      "result": "i32"
+    },
+    "tech_pay_resource": {
+      "function_index": 13067,
+      "arguments": ["ptr", "ptr"],
+      "kinds": [11, 15],
+      "result": "ptr"
+    },
+    "tech_unlock": {
+      "function_index": 13178,
+      "arguments": ["ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 10],
+      "result": "void",
+      "null_only": [2]
+    },
+    "military_has_ability": {
+      "function_index": 13108,
+      "arguments": ["ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 19],
+      "result": "bool",
+      "null_only": [2]
+    },
+    "military_can_unlock": {
+      "function_index": 13105,
+      "arguments": ["ptr", "ptr"],
+      "kinds": [11, 11],
+      "result": "bool"
+    },
+    "military_auto_unlock": {
+      "function_index": 13102,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "bool"
+    },
+    "military_level_count": {
+      "function_index": 5139,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "i32"
+    },
+    "military_level": {
+      "function_index": 5140,
+      "arguments": ["ptr", "i32"],
+      "kinds": [11, 3],
+      "result": "i32"
+    },
+    "military_unlock": {
+      "function_index": 13179,
+      "arguments": ["ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 10],
+      "result": "void",
+      "null_only": [2]
     }
   }
 }

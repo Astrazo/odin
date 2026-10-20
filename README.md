@@ -39,6 +39,7 @@ Current observation
 - happiness, population, population cap and food cap
 - villager growth active, progress and time remaining
 - current game time and time until the next winter and summer
+- clan lore research, military XP/path progression and legal progression choices
 - discovered one-hop zone graph with ownership, natural-food, fish and remaining
   stone/iron features per node
 
@@ -59,7 +60,51 @@ uv run odin run --tensor economy --tensor temporal
 Every `odin run` also writes the full observation sequence as a timestamped JSON
 array in `artifacts/runs/`. The CLI prints the exact path when the run starts.
 
-Available names are `pause`, `economy`, `temporal` and `zones`.
+Available names are `pause`, `economy`, `temporal`, `zones` and `progression`.
+
+## Lore and military progression
+
+```powershell
+uv run odin tools progression
+uv run odin run --tensor progression
+uv run odin lore lumber
+uv run odin military guardian
+```
+
+`tools progression` is read-only. It lists the clan's complete tech tree with
+semantic `id`, display `name`, learned state, native cost/resource and
+`can_research`, plus military path choices with `selected` and `can_select`.
+Use the listed IDs for actions. Lore also accepts a matching display name such
+as `odin lore "Sharp Axes"`. Military accepts the native path labels `leadership`,
+`guardian`, `legions`, with `tactician` and `conqueror` as aliases for the first
+and third. IDs are named catalogue entries, not runtime object UIDs.
+
+The new global tensor contains next lore cost, free lore choices, military XP,
+next XP threshold, native auto-unlock state, two flags per clan tech
+(`unlocked`, `can_research`), path selected/available flags and military ability
+unlock flags. Lore stock remains in the economy tensor. `lore_action_mask` and
+`military_action_mask` align with the returned `tech_ids` and `military_path_ids`.
+The complete learned/locked vocabulary stays stable within a clan; the schema
+fingerprint includes the clan and catalogue. Pin feature names/fingerprint
+before reusing trained weights with another clan or game build.
+
+Lore eligibility combines native prerequisite and payment predicates; the
+catalogue getter alone does not indicate legality. Listed costs are native
+nominal costs: free choices and blessings use the normal engine payment rules.
+Military selection is limited to the first primary ordinary path, requires the
+native XP/legality check and is masked after a path is selected. Later ordinary
+tiers are left to native auto-unlock. Free secondary paths, Dragon/Lynx boards,
+Owl research, stolen/copied lore subchoices and other exceptional progression
+are not exposed by these actions. The reviewed clans are Wolf, Bear, Stag,
+Goat, Raven, Boar, Snake and Horse.
+
+Both actions and the read-only tool accept `--player PLAYER_UID`. Bot dispatch
+requires a paused authoritative offline match with that bot's stock AI stopped,
+as with assignment. Actions send one normal public RPC and confirm learned
+state; an unconfirmed result is not automatically retried. Python exposes
+`env.lore("lumber", player_id=...)` and `env.military("guardian", player_id=...)`.
+
+See [the native bindings and validation record](docs/progression.md).
 
 ## Scoutable zones
 

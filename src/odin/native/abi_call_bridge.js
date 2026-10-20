@@ -86,20 +86,22 @@ function install(classes) {
         );
     }
 
-    // HBuilding is a managed virtual view over CastleDB data. The stock adapter
-    // unwraps it to DynObj during a debugger cast, after which Tools.buildInZone
-    // cannot accept it. Keep the original pointer and the inspected view type.
+    // Building and tech definitions are managed virtual views over CastleDB
+    // data. The stock adapter unwraps them to DynObj during a debugger cast,
+    // after which native functions cannot accept them. Preserve only these
+    // inspected view types, using the same original pointer.
     const buildingFields = (
         'assign,cost,editor,flags,franceTexts,gen,gfx,group,id,index,ingredients,' +
         'padProps,props,skins,texts,ui,upgrades,values'
     );
+    const techFields = 'desc,flavor,gfx,group,id,index,name,props,values';
     const originalValueCast = Eval.prototype.valueCast;
     Eval.prototype.valueCast = function(value, type) {
         if (
             value != null
             && number(value) !== 0n
             && type._hx_index === 15
-            && type.fields.map(field => field.name).join(',') === buildingFields
+            && [buildingFields, techFields].includes(type.fields.map(field => field.name).join(','))
         ) {
             return new Value(Repr.VPointer(value), type, null);
         }

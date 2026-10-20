@@ -6,12 +6,14 @@ from odin.actions.assignments import assign_to_building
 from odin.actions.buildings import build_building
 from odin.actions.colonisation import colonise_zone
 from odin.actions.pause import pause_game
+from odin.actions.progression import choose_military_path, research_lore
 from odin.actions.scouting import scout_zone
 from odin.actions.workers import assign_worker_to_building
 from odin.bridge.session import NativeRuntime
 from odin.observations.buildings import load_building_schema, observe_buildings
 from odin.observations.economy import observe_economy, resolve_resource_keys
 from odin.observations.temporal import observe_pause, observe_temporal
+from odin.observations.progression import load_progression_catalogue, observe_progression
 from odin.observations.units import load_unit_schema, observe_units
 from odin.observations.zones import (
     discover_zone_graph,
@@ -21,7 +23,7 @@ from odin.observations.zones import (
 )
 
 
-OBSERVATION_TENSORS = ("pause", "economy", "temporal", "zones")
+OBSERVATION_TENSORS = ("pause", "economy", "temporal", "zones", "progression")
 
 
 class NorthgardEnv:
@@ -46,6 +48,7 @@ class NorthgardEnv:
         self.building_catalogue = None
         self.unit_catalogue = None
         self.zone_feature_catalogue = None
+        self.progression_catalogue = None
 
     def __enter__(self):
         try:
@@ -56,6 +59,8 @@ class NorthgardEnv:
                 self.building_catalogue = load_building_schema()
                 self.unit_catalogue = load_unit_schema()
                 self.zone_feature_catalogue = load_zone_feature_schema()
+            if "progression" in self.tensors:
+                self.progression_catalogue = load_progression_catalogue(self.runtime)
             return self
         except BaseException:
             self.runtime.close()
@@ -76,6 +81,8 @@ class NorthgardEnv:
             )
         if "temporal" in self.tensors:
             observation["temporal"] = observe_temporal(self.runtime)
+        if "progression" in self.tensors:
+            observation["progression"] = observe_progression(self.runtime, self.progression_catalogue)
         graph = None
         if "zones" in self.tensors:
             graph = discover_zone_graph(self.runtime)
@@ -171,3 +178,11 @@ class NorthgardEnv:
     def colonise(self, zone_id: int, *, player_id: int | None = None) -> dict:
         """Request normal colonisation for the selected player."""
         return self.act(colonise_zone, zone_id, player_id=player_id)
+
+    def lore(self, tech: str, *, player_id: int | None = None) -> dict:
+        """Learn a currently legal named clan technology."""
+        return self.act(research_lore, tech, player_id=player_id)
+
+    def military(self, path: str, *, player_id: int | None = None) -> dict:
+        """Choose a currently legal primary military path."""
+        return self.act(choose_military_path, path, player_id=player_id)

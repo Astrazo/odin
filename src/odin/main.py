@@ -10,6 +10,7 @@ import typer
 from odin.actions.pause import pause_game
 from odin.actions.assignments import assign_to_building, preview_assignment
 from odin.actions.players import list_players, set_ai_orders
+from odin.actions.progression import choose_military_path, research_lore
 from odin.actions.colonisation import colonise_zone, list_colonisation_zones, preview_colonisation
 from odin.actions.workers import resolve_assignment
 from odin.bridge.launch import launch_game
@@ -17,6 +18,7 @@ from odin.bridge.session import NativeRuntime
 from odin.environment import NorthgardEnv, OBSERVATION_TENSORS
 from odin.observations.temporal import observe_pause
 from odin.observations.units import load_unit_schema
+from odin.observations.progression import observe_progression
 from odin.observations.zones import discover_zone_graph
 from odin.tools.ids import list_player_ids, list_scout_ids
 from odin.tools.unit_jobs import list_unit_jobs
@@ -119,6 +121,35 @@ def ai_stop(
     """Stop one paused offline bot's stock AI decisions."""
     with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
         typer.echo(json.dumps(set_ai_orders(runtime, player_id, stopped=True)))
+
+
+@app.command("lore")
+def lore(
+    tech: str = typer.Argument(..., help="Technology label or name from tools progression."),
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Research one named clan technology using normal costs and prerequisites."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(research_lore(runtime, tech, player_id=player_id)))
+
+
+@app.command("military")
+def military(
+    path: str = typer.Argument(..., help="Military path label from tools progression."),
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Choose a primary military path when the native XP requirement is met."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(choose_military_path(runtime, path, player_id=player_id)))
+
+
+@tools_app.command("progression")
+def progression(
+    player_id: int | None = typer.Option(None, "--player", help="Player UID; defaults to your player."),
+) -> None:
+    """Read lore and military progression, costs and legal choices without unlocking."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(observe_progression(runtime, player_id=player_id), indent=2))
 
 
 @app.command("colonise")
@@ -284,7 +315,7 @@ def run(
         "--tensor",
         "-t",
         help=(
-            "Tensor to extract: pause, economy, temporal or zones. "
+            "Tensor to extract: pause, economy, temporal, zones or progression. "
             "Repeat for more than one; omit for all."
         ),
     ),
