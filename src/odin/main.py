@@ -7,13 +7,21 @@ from pathlib import Path
 import typer
 
 from odin.actions.pause import pause_game
+from odin.actions.assignments import assign_to_building, preview_assignment
+from odin.actions.players import list_players, set_ai_orders
+from odin.actions.colonisation import colonise_zone, list_colonisation_zones, preview_colonisation
 from odin.bridge.launch import launch_game
 from odin.bridge.session import NativeRuntime
 from odin.environment import NorthgardEnv, OBSERVATION_TENSORS
 from odin.observations.temporal import observe_pause
+from odin.observations.zones import discover_zone_graph
+from odin.tools.ids import list_player_ids, list_scout_ids
+from odin.tools.unit_jobs import list_unit_jobs
 
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
+tools_app = typer.Typer(add_completion=False, no_args_is_help=True)
+app.add_typer(tools_app, name="tools")
 DEFAULT_EXE = Path(r"C:\Program Files (x86)\Steam\steamapps\common\Northgard\Northgard.exe")
 ADAPTER = Path(r"C:\Users\Josh\.vscode\extensions\haxefoundation.haxe-hl-2.0.0\adapter.js")
 DEBUG_PORT = 6112
@@ -45,6 +53,143 @@ def pause() -> None:
     """Pause the current offline match through the native bridge."""
     with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
         typer.echo(json.dumps(pause_game(runtime)))
+
+
+@app.command()
+def build(
+    zone_id: int = typer.Option(..., "--zone", help="Owned zone ID."),
+    building_id: str = typer.Option(..., "--building", help="Reviewed building family ID."),
+) -> None:
+    """Request one building through Northgard's normal placement code."""
+    with NorthgardEnv(ADAPTER, DEFAULT_EXE, DEBUG_PORT, tensors=("zones",)) as env:
+        typer.echo(json.dumps(env.build(zone_id, building_id)))
+
+
+@app.command()
+def assign(
+    unit_id: int = typer.Option(..., "--unit", help="Owned unit runtime ID."),
+    building_id: int = typer.Option(..., "--building", help="Owned building runtime ID."),
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Validate and assign one owned unit to one owned building."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(assign_to_building(runtime, unit_id, building_id, player_id=player_id)))
+
+
+@app.command("ai-stop")
+def ai_stop(
+    player_id: int = typer.Option(..., "--player", help="Bot player UID."),
+) -> None:
+    """Stop one paused offline bot's stock AI decisions."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(set_ai_orders(runtime, player_id, stopped=True)))
+
+
+@app.command("colonise")
+def colonise(
+    zone_id: int = typer.Option(..., "--zone", help="Discovered, unowned border zone ID."),
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Request normal colonisation, paying the game's current resource cost."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(colonise_zone(runtime, zone_id, player_id=player_id)))
+
+
+@app.command("ai-resume")
+def ai_resume(
+    player_id: int = typer.Option(..., "--player", help="Bot player UID."),
+) -> None:
+    """Resume one paused offline bot's stock AI decisions."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(set_ai_orders(runtime, player_id, stopped=False)))
+
+
+@app.command()
+def scout(
+    unit_id: int = typer.Option(..., "--unit", help="Owned Scout runtime ID."),
+    zone_id: int = typer.Option(..., "--zone", help="Masked scout-target zone ID."),
+) -> None:
+    """Send one eligible Scout to a masked neighbouring zone."""
+    with NorthgardEnv(ADAPTER, DEFAULT_EXE, DEBUG_PORT, tensors=("zones",)) as env:
+        typer.echo(json.dumps(env.scout(unit_id, zone_id)))
+
+
+@tools_app.command("ids")
+def ids(
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Print the player's current zone and unit runtime IDs, then exit."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(list_player_ids(runtime, player_id=player_id), indent=2))
+
+
+@tools_app.command("players")
+def players() -> None:
+    """List player UIDs, names and stock AI order state."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(list_players(runtime), indent=2))
+
+
+@tools_app.command("unit-jobs")
+def unit_jobs(
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Map owned unit runtime IDs to their current professions and zones."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(list_unit_jobs(runtime, player_id=player_id), indent=2))
+
+
+@tools_app.command("scout-zones")
+def scout_zones() -> None:
+    """List eligible scout IDs and scoutable hidden zones for your local player."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        graph = discover_zone_graph(runtime)
+        typer.echo(json.dumps({
+            "scout_ids": list_scout_ids(runtime),
+            "scoutable_zones": graph["scout_target_mask"],
+        }, indent=2))
+
+
+@tools_app.command("colonise-zones")
+def colonise_zones(
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """List colonisable borders, native costs and blocked-zone reasons."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(list_colonisation_zones(runtime, player_id=player_id), indent=2))
+
+
+@tools_app.command("colonise-preview")
+def colonise_preview(
+    zone_id: int = typer.Option(..., "--zone", help="Discovered, unowned border zone ID."),
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Preview one colonisation target without sending an order."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(preview_colonisation(runtime, zone_id, player_id=player_id), indent=2))
+
+
+@tools_app.command("buildings")
+def buildings(
+    zone_id: int = typer.Option(..., "--zone", help="Player-owned zone runtime ID."),
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Print building IDs and kinds in one player-owned zone, then exit."""
+    from odin.tools.buildings import list_zone_buildings
+
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(list_zone_buildings(runtime, zone_id, player_id=player_id), indent=2))
+
+
+@tools_app.command("assign-preview")
+def assign_preview(
+    unit_id: int = typer.Option(..., "--unit", help="Owned unit runtime ID."),
+    building_id: int = typer.Option(..., "--building", help="Owned building runtime ID."),
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Show whether Northgard would accept one unit/building assignment."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(preview_assignment(runtime, unit_id, building_id, player_id=player_id), indent=2))
 
 
 def format_unmapped_buildings(observation: dict) -> str | None:

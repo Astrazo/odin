@@ -167,6 +167,7 @@ def discover_zone_graph(runtime) -> dict:
             queue.append(zone_id)
 
     adjacency = {}
+    scout_sources = {}
     queue_index = 0
     while queue_index < len(queue):
         zone_id = queue[queue_index]
@@ -178,6 +179,11 @@ def discover_zone_graph(runtime) -> dict:
         for index in range(runtime.array_length(f"{zone}.next")):
             neighbour = f"{zone}.next[{index}]"
             if not _call_bool(runtime, f"this.state.me.hasDiscovered({neighbour})"):
+                # An undiscovered neighbour is not a graph node. Its ID and
+                # border relationship are enough to expose a scouting action.
+                neighbour_id = int(runtime.evaluate(f"{neighbour}.id"))
+                if _call_bool(runtime, f"{neighbour}.canBeScouted(this.state.me, null)"):
+                    scout_sources.setdefault(neighbour_id, set()).add(zone_id)
                 continue
 
             neighbour_id = int(runtime.evaluate(f"{neighbour}.id"))
@@ -210,6 +216,13 @@ def discover_zone_graph(runtime) -> dict:
             [row_by_zone[source] for source, _ in edges],
             [row_by_zone[target] for _, target in edges],
         ],
+        "scout_target_mask": [
+            {
+                "zone_id": target_id,
+                "adjacent_to": sorted(source_ids),
+            }
+            for target_id, source_ids in sorted(scout_sources.items())
+        ],
     }
 
 
@@ -236,6 +249,7 @@ def observe_zone_graph(runtime, resource_keys: dict[str, str], graph=None, catal
             for zone_id in zone_ids
         ],
         "edge_index": graph["edge_index"],
+        "scout_target_mask": graph["scout_target_mask"],
         "zone_feature_ids": catalogue["feature_ids"],
         "zone_feature_schema_sha256": catalogue["schema_sha256"],
     }

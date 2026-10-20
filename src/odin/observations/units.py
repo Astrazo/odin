@@ -1,4 +1,4 @@
-"""Friendly and enemy unit counts aligned with the discovered zone graph."""
+"""Zone unit counts and owned unit identities with current professions."""
 
 import hashlib
 import json
@@ -75,7 +75,7 @@ def _unit_side(runtime, unit: str) -> str:
 
 
 def observe_units(runtime, catalogue: dict, graph: dict) -> dict:
-    """Return fixed friendly/enemy unit counts for every discovered zone."""
+    """Return zone counts and owned unit professions from the same stopped frame."""
     unit_ids = catalogue["unit_ids"]
     neutral_unit_ids = catalogue["neutral_unit_ids"]
     column_by_id = {
@@ -88,6 +88,8 @@ def observe_units(runtime, catalogue: dict, graph: dict) -> dict:
     }
     rows = []
     unmapped = set()
+    scout_unit_mask = []
+    unit_jobs = {}
 
     for zone_id in graph["zone_ids"]:
         zone = graph["nodes"][zone_id]["expression"]
@@ -101,6 +103,13 @@ def observe_units(runtime, catalogue: dict, graph: dict) -> dict:
                 continue
 
             side = _unit_side(runtime, unit)
+            owned = side == "friendly" and _call_bool(runtime, f"{unit}.owner == this.state.me")
+            if owned:
+                if _call_bool(runtime, f"{unit}.get_canScout()"):
+                    scout_unit_mask.append({
+                        "unit_id": int(runtime.evaluate(f"{unit}.__uid")),
+                        "zone_id": zone_id,
+                    })
             engine_id = json.loads(runtime.evaluate(f"{unit}.kind"))
             if not isinstance(engine_id, str) or not engine_id:
                 raise RuntimeError(f"Expected a unit ID from {unit}.kind")
@@ -110,6 +119,13 @@ def observe_units(runtime, catalogue: dict, graph: dict) -> dict:
                 families = catalogue["neutral_family_by_engine_id"]
                 columns = neutral_column_by_id
             family = families.get(engine_id)
+            if owned:
+                unit_id = str(int(runtime.evaluate(f"{unit}.__uid")))
+                unit_jobs[unit_id] = {
+                    "job": family,
+                    "engine_id": engine_id,
+                    "zone_id": zone_id,
+                }
             column = columns.get(family)
             if column is None:
                 unmapped.add((zone_id, side, engine_id))
@@ -138,6 +154,8 @@ def observe_units(runtime, catalogue: dict, graph: dict) -> dict:
         "unit_ids": unit_ids,
         "neutral_unit_ids": neutral_unit_ids,
         "schema_sha256": catalogue["schema_sha256"],
+        "unit_jobs": dict(sorted(unit_jobs.items(), key=lambda entry: int(entry[0]))),
+        "scout_unit_mask": sorted(scout_unit_mask, key=lambda unit: unit["unit_id"]),
         "unmapped_units": [
             {"zone_id": zone_id, "side": side, "engine_id": engine_id}
             for zone_id, side, engine_id in sorted(unmapped)

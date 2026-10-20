@@ -18,9 +18,36 @@ function contractsFor() {
 }
 
 function install(classes) {
-    const {Eval, Adapter, Buffer: DebugBuffer, Pointer, Register} = classes;
+    const {Eval, Adapter, Buffer: DebugBuffer, Pointer, Register, Value, Repr, DebugApi, Native} = classes;
     const contracts = contractsFor();
     let recoveryUnconfirmed = false;
+    let shutdownHold = null;
+
+    const originalShutdown = Adapter.prototype.shutdown;
+    Adapter.prototype.shutdown = function() {
+        // Losing Python's pipe must not trigger vscode-debugadapter's default
+        // process.exit while Windows may still have Northgard attached.
+        if (recoveryUnconfirmed || (this.dbg != null && this.dbg.api != null)) {
+            if (shutdownHold === null) {
+                process.stderr.write('Debugger shutdown blocked: detach is unconfirmed.\n');
+                shutdownHold = setInterval(() => {}, 1000);
+            }
+            return;
+        }
+        if (shutdownHold !== null) {
+            clearInterval(shutdownHold);
+            shutdownHold = null;
+        }
+        return originalShutdown.call(this);
+    };
+
+    // The stock API ignores the native detach result. A successful DAP reply
+    // must mean Windows has actually released the debug connection.
+    DebugApi.prototype.stop = function() {
+        if (!Native.debugStop(this.pid)) {
+            throw new Error('Native debugger detach failed; keep the adapter running.');
+        }
+    };
 
     const originalDisconnect = Adapter.prototype.disconnectRequest;
     Adapter.prototype.disconnectRequest = function(response, args) {
@@ -32,7 +59,19 @@ function install(classes) {
             );
             return;
         }
-        return originalDisconnect.call(this, response, args);
+        // The installed adapter replies before stopDebug() detaches. Python
+        // could receive that reply and exit/terminate Node while it still owns
+        // Northgard's debug connection. Defer this reply until cleanup returns.
+        const sendResponse = this.sendResponse;
+        this.sendResponse = function(reply) {
+            if (reply !== response) return sendResponse.call(this, reply);
+        };
+        try {
+            originalDisconnect.call(this, response, args);
+        } finally {
+            this.sendResponse = sendResponse;
+        }
+        sendResponse.call(this, response);
     };
 
     function number(pointer) {
@@ -47,6 +86,26 @@ function install(classes) {
         );
     }
 
+    // HBuilding is a managed virtual view over CastleDB data. The stock adapter
+    // unwraps it to DynObj during a debugger cast, after which Tools.buildInZone
+    // cannot accept it. Keep the original pointer and the inspected view type.
+    const buildingFields = (
+        'assign,cost,editor,flags,franceTexts,gen,gfx,group,id,index,ingredients,' +
+        'padProps,props,skins,texts,ui,upgrades,values'
+    );
+    const originalValueCast = Eval.prototype.valueCast;
+    Eval.prototype.valueCast = function(value, type) {
+        if (
+            value != null
+            && number(value) !== 0n
+            && type._hx_index === 15
+            && type.fields.map(field => field.name).join(',') === buildingFields
+        ) {
+            return new Value(Repr.VPointer(value), type, null);
+        }
+        return originalValueCast.call(this, value, type);
+    };
+
     Eval.prototype.evalCall = function(vfun, values) {
         if (recoveryUnconfirmed) {
             throw new Error('RECOVERY NOT CONFIRMED: further calls blocked.');
@@ -54,7 +113,7 @@ function install(classes) {
         if (!this.jit.is64 || !this.jit.isWinCall) {
             throw new Error('Native calls require Windows x64 HashLink.');
         }
-        if (number(this.api.readRegister(this.currentThread, 4)) & 0x100n) {
+        if (number(this.api.readRegister(this.currentThread, Register.EFlags)) & 0x100n) {
             throw new Error('Single-step state is not supported.');
         }
         if (vfun.t._hx_index !== 10 || ![9, 10, 11].includes(vfun.v._hx_index)) {
@@ -73,7 +132,7 @@ function install(classes) {
 
         const typeNames = new Map([
             [0, 'void'], [3, 'i32'], [5, 'f32'], [6, 'f64'],
-            [7, 'bool'], [11, 'ptr'], [14, 'ptr'], [15, 'ptr'], [19, 'ptr'],
+            [7, 'bool'], [10, 'ptr'], [11, 'ptr'], [14, 'ptr'], [15, 'ptr'], [18, 'ptr'], [19, 'ptr'],
         ]);
         const signature = vfun.t.fun;
         if (

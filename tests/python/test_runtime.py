@@ -3,6 +3,8 @@
 from collections import deque
 from pathlib import Path
 import unittest
+from unittest.mock import Mock
+import subprocess
 
 from odin.actions.pause import pause_game
 from odin.bridge.session import NativeRuntime
@@ -48,6 +50,52 @@ def runtime(values):
 
 
 class NativeRuntimeTests(unittest.TestCase):
+    def test_close_waits_for_adapter_exit_after_confirmed_detach(self):
+        bridge = runtime({})
+        bridge.attach_attempted = True
+        bridge.session = Mock()
+        session = bridge.session
+        bridge.process = Mock()
+        bridge.process.poll.return_value = None
+
+        bridge.close()
+
+        session.request.assert_called_once_with(
+            "disconnect", {"terminateDebuggee": False}, timeout=5,
+        )
+        bridge.process.stdin.close.assert_called_once_with()
+        bridge.process.wait.assert_called_once_with(timeout=5)
+        bridge.process.terminate.assert_not_called()
+
+    def test_close_keeps_adapter_alive_when_disconnect_fails(self):
+        bridge = runtime({})
+        bridge.attach_attempted = True
+        bridge.session = Mock()
+        bridge.session.request.side_effect = RuntimeError("detach failed")
+        bridge.process = Mock()
+        bridge.process.poll.return_value = None
+        bridge.process.pid = 1234
+
+        with self.assertWarnsRegex(RuntimeWarning, "1234.*detach failed"):
+            bridge.close()
+
+        bridge.process.stdin.close.assert_not_called()
+        bridge.process.terminate.assert_not_called()
+        bridge.process.wait.assert_not_called()
+
+    def test_close_can_terminate_a_detached_adapter_that_does_not_exit(self):
+        bridge = runtime({})
+        bridge.attach_attempted = True
+        bridge.session = Mock()
+        bridge.process = Mock()
+        bridge.process.poll.return_value = None
+        bridge.process.wait.side_effect = [subprocess.TimeoutExpired("node", 5), 0]
+
+        bridge.close()
+
+        bridge.process.terminate.assert_called_once_with()
+        self.assertEqual(bridge.process.wait.call_count, 2)
+
     def test_advance_reuses_session_and_replaces_frame(self):
         bridge = runtime({})
         bridge.thread = 7

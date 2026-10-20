@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 import time
+import warnings
 
 from .protocol import AdapterSession
 
@@ -32,6 +33,7 @@ class NativeRuntime:
         self.thread = None
         self.build = None
         self.boot = None
+        self.attach_attempted = False
 
     def __enter__(self):
         try:
@@ -74,6 +76,7 @@ class NativeRuntime:
             "pathFormat": "path",
         })
 
+        self.attach_attempted = True
         self.session.request("attach", {
             "program": str(self.boot),
             "cwd": str(self.exe.parent),
@@ -168,13 +171,28 @@ class NativeRuntime:
 
     def close(self) -> None:
         """Detach the adapter without closing Northgard."""
-        if self.session is not None:
+        if self.attach_attempted:
             try:
                 self.session.request("disconnect", {"terminateDebuggee": False}, timeout=5)
-            except Exception:
-                pass
+            except Exception as error:
+                warnings.warn(
+                    f"Debugger adapter PID {self.process.pid} left running: {error}. "
+                    "Detach is unconfirmed; terminating it could close Northgard.",
+                    RuntimeWarning,
+                )
+                return
+            self.attach_attempted = False
 
         if self.process is not None and self.process.poll() is None:
-            self.process.terminate()
+            # The patched adapter acknowledges only after native detach. Close
+            # its input and allow normal shutdown before considering a kill.
+            self.process.stdin.close()
+            try:
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.process.terminate()
+                self.process.wait(timeout=5)
         if self.process is not None:
-            self.process.wait(timeout=5)
+            self.session = None
+            self.frame = None
+            self.thread = None

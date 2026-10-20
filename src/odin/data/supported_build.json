@@ -75,6 +75,72 @@
       "kinds": [11],
       "result": "bool"
     },
+    "build_in_zone": {
+      "function_index": 26048,
+      "arguments": ["ptr", "ptr", "ptr", "ptr"],
+      "kinds": [11, 15, 11, 15],
+      "null_only": [3],
+      "result": "ptr"
+    },
+    "script_assign": {
+      "function_index": 11737,
+      "arguments": ["ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 11],
+      "result": "bool"
+    },
+    "set_skip_ai_order": {
+      "function_index": 5216,
+      "arguments": ["ptr", "bool"],
+      "kinds": [11, 7],
+      "result": "bool"
+    },
+    "building_can_assign_to": {
+      "function_index": 5804,
+      "arguments": ["ptr", "ptr", "ptr", "ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 19, 19, 19, 19],
+      "null_only": [2, 3, 4, 5],
+      "result": "bool"
+    },
+    "zone_can_be_scouted": {
+      "function_index": 3414,
+      "arguments": ["ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 14],
+      "null_only": [2],
+      "result": "bool"
+    },
+    "colonisation_reason": {
+      "function_index": 14622,
+      "arguments": ["ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 18],
+      "result": "ptr"
+    },
+    "colonisation_cost": {
+      "function_index": 14618,
+      "arguments": ["ptr", "ptr", "ptr", "ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 11, 14, 14, 19],
+      "null_only": [2, 3, 4, 5],
+      "result": "ptr"
+    },
+    "start_colonisation": {
+      "function_index": 14688,
+      "arguments": ["ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 10],
+      "null_only": [2],
+      "result": "void"
+    },
+    "unit_can_scout": {
+      "function_index": 4240,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "bool"
+    },
+    "unit_move_to_zone": {
+      "function_index": 4415,
+      "arguments": ["ptr", "ptr", "bool", "ptr", "ptr"],
+      "kinds": [11, 11, 7, 15, 11],
+      "null_only": [3, 4],
+      "result": "void"
+    },
     "has_natural_food_source": {
       "function_index": 3347,
       "arguments": ["ptr"],

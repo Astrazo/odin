@@ -84,6 +84,17 @@ function verifyStub(arguments_, returnType, returnValue) {
             calls++;
             assert.equal(cpu[0], target);
             assert.equal(rsp % 16, 0, 'Caller RSP must be aligned');
+            // The interrupted frame may hold its only reference to a managed
+            // object in RAX. A debugger-side copy cannot keep that object alive
+            // if the callee allocates and triggers HashLink's stack-scanning GC.
+            let savedRaxOnStack = false;
+            for (let address = rsp + stub.frameBytes; address < 0x100000; address += 8) {
+                if (load(address, 8).readBigUInt64LE() === initialCpu[0]) {
+                    savedRaxOnStack = true;
+                    break;
+                }
+            }
+            assert(savedRaxOnStack, 'Original RAX must remain a GC root on the target stack');
             const calleeRsp = rsp - 8; // CALL pushes a return address.
             for (let index = 0; index < arguments_.length; index++) {
                 const argument = arguments_[index];

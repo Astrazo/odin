@@ -1,7 +1,7 @@
 // Pure instruction encoder. This module never opens a process or runs its bytes.
 const ARGUMENT_REGISTERS = [1, 2, 8, 9]; // RCX, RDX, R8, R9
 const SCRATCH_REGISTERS = [1, 2, 8, 9, 10, 11];
-const SAVED_BYTES = 8 + 6 * 8 + 6 * 16; // RFLAGS, CPU scratch registers, XMM0..5
+const SAVED_BYTES = 8 + 7 * 8 + 6 * 16; // RFLAGS, RAX + CPU scratch registers, XMM0..5
 const TYPES = new Set(['i32', 'bool', 'f32', 'f64', 'ptr']);
 
 function encodeArgument(type, value) {
@@ -64,6 +64,10 @@ function buildCallStub(arguments_, address, returnType) {
 
     // Entry RSP must be 16-byte aligned. Keep saved values outside shadow space.
     emit(0x9c); // pushfq, before any instruction changes flags
+    // The interrupted frame's RAX may be a managed pointer. Keep a copy on
+    // the target stack so HashLink's GC can find it during an allocating call;
+    // the bridge's JavaScript register snapshot is outside the target's GC.
+    emit(0x50); // push rax
     for (const register of SCRATCH_REGISTERS) {
         if (register >= 8) emit(0x41);
         emit(0x50 + (register % 8));
@@ -106,6 +110,9 @@ function buildCallStub(arguments_, address, returnType) {
         if (register >= 8) emit(0x41);
         emit(0x58 + (register % 8));
     }
+    // Keep the callee's result in RAX. The bridge restores the original RAX
+    // after reading that result; discard only its temporary GC-root slot here.
+    adjustStack(false, 8);
     emit(0x9d, 0xcc); // popfq; int3. Original RAX/RIP/RSP restored by dispatcher.
     return {code: Buffer.concat(parts), locations, frameBytes, paddingBytes, savedBytes: SAVED_BYTES};
 }

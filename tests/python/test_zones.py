@@ -25,6 +25,7 @@ class FakeRuntime:
         self.values = {
             f"{root}.id": "10",
             f"{visible}.id": "20",
+            f"{hidden}.id": "40",
             f"{back_to_root}.id": "10",
             f"{distant}.id": "30",
             f"{distant}.next[0].id": "20",
@@ -37,6 +38,7 @@ class FakeRuntime:
             f"{visible}.getOwner() == this.state.me": "false",
             f"{visible}.getOwner() == null": "true",
             f"this.state.me.hasDiscovered({hidden})": "false",
+            f"{hidden}.canBeScouted(this.state.me, null)": "true",
             f"this.state.me.hasDiscovered({back_to_root})": "true",
             f"this.state.me.hasDiscovered({distant})": "true",
             f"this.state.me.hasDiscovered({distant}.next[0])": "true",
@@ -121,7 +123,17 @@ class ZoneGraphTests(unittest.TestCase):
              0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         ])
         self.assertEqual(report["edge_index"], [[0, 1, 1, 2], [1, 0, 2, 1]])
-        self.assertNotIn("this.state.me.zones[0].next[1].id", runtime.evaluated)
+        self.assertEqual(report["scout_target_mask"], [{
+            "zone_id": 40,
+            "adjacent_to": [10],
+        }])
+        # A hidden neighbour contributes only its opaque ID to the action mask.
+        # Its owner, resources, buildings, and units are never read into the graph.
+        hidden = "this.state.me.zones[0].next[1]"
+        self.assertEqual(
+            [expression for expression in runtime.evaluated if expression.startswith(hidden)],
+            [f"{hidden}.id"],
+        )
 
     def test_summarizes_only_present_zone_contents(self):
         summary = summarize_zones({

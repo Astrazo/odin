@@ -2,7 +2,11 @@
 
 from pathlib import Path
 
+from odin.actions.assignments import assign_to_building
+from odin.actions.buildings import build_building
+from odin.actions.colonisation import colonise_zone
 from odin.actions.pause import pause_game
+from odin.actions.scouting import scout_zone
 from odin.bridge.session import NativeRuntime
 from odin.observations.buildings import load_building_schema, observe_buildings
 from odin.observations.economy import observe_economy, resolve_resource_keys
@@ -109,6 +113,8 @@ class NorthgardEnv:
             zones["unit_ids"] = units["unit_ids"]
             zones["neutral_unit_ids"] = units["neutral_unit_ids"]
             zones["unit_schema_sha256"] = units["schema_sha256"]
+            zones["scout_unit_mask"] = units["scout_unit_mask"]
+            zones["unit_jobs"] = units["unit_jobs"]
             zones["unmapped_units"] = units["unmapped_units"]
             zones["summary"] = summarize_zones(zones)
             observation["zones"] = zones
@@ -130,3 +136,24 @@ class NorthgardEnv:
     def pause(self) -> dict:
         """Apply the currently available test action to the stopped frame."""
         return self.act(pause_game)
+
+    def build(self, zone_id: int, building_id: str) -> dict:
+        """Request one reviewed building using Northgard's normal placement path."""
+        return self.act(
+            build_building,
+            zone_id,
+            building_id,
+            self.building_catalogue,
+        )
+
+    def assign(self, unit_id: int, building_id: int, *, player_id: int | None = None) -> dict:
+        """Assign one owned unit to one owned building."""
+        return self.act(assign_to_building, unit_id, building_id, player_id=player_id)
+
+    def scout(self, unit_id: int, zone_id: int) -> dict:
+        """Send one eligible scout to an undiscovered neighbouring zone."""
+        return self.act(scout_zone, unit_id, zone_id)
+
+    def colonise(self, zone_id: int, *, player_id: int | None = None) -> dict:
+        """Request normal colonisation for the selected player."""
+        return self.act(colonise_zone, zone_id, player_id=player_id)

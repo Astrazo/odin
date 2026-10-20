@@ -22,7 +22,8 @@ if (source.split(marker).length !== 2) {
 const bridgePath = path.join(__dirname, 'abi_call_bridge.js');
 const injection = `require(${JSON.stringify(bridgePath)}).install({` +
     'Eval: hld_Eval, Adapter: HLAdapter, Buffer: hld_Buffer, ' +
-    'Pointer: hld_Pointer, Register: hld_Register' +
+    'Pointer: hld_Pointer, Register: hld_Register, Value: hld_Value, Repr: hld_ValueRepr, ' +
+    'DebugApi: hld_NodeDebugApiNative, Native: hld_Native' +
     '});\n';
 
 const adapter = new Module(adapterPath, module);
