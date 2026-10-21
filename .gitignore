@@ -11,3 +11,10 @@ wheels/
 
 # Runtime evidence
 artifacts/runs/
+
+# Local caches and configuration
+.ruff_cache/
+.pytest_cache/
+.env
+.env.*
+!.env.example

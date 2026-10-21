@@ -13,3 +13,6 @@
 - Report what was actually observed in the game and what remains unverified. A mocked test is not live validation.
 - Keep tensor and action complexity tied to a concrete policy decision and explain its economic or strategic purpose. Treat performance benefits as hypotheses until measured.
 - Keep build and assign as separate policy actions. Build only places a site; after simulation advances, observations expose staffing and the policy can choose a separate assignment by profession and source zone. Do not combine them or schedule an automatic fallback assignment.
+
+## Documentation
+- Keep README.md to a brief project description. Do not update it for routine code or feature changes unless the user explicitly requests it.

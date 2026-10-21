@@ -37,7 +37,7 @@ debug_app = typer.Typer(add_completion=False, no_args_is_help=True)
 app.add_typer(tools_app, name="tools")
 app.add_typer(debug_app, name="debug")
 DEFAULT_EXE = Path(r"C:\Program Files (x86)\Steam\steamapps\common\Northgard\Northgard.exe")
-ADAPTER = Path(r"C:\Users\Josh\.vscode\extensions\haxefoundation.haxe-hl-2.0.0\adapter.js")
+ADAPTER = Path.home() / ".vscode/extensions/haxefoundation.haxe-hl-2.0.0/adapter.js"
 DEBUG_PORT = 6112
 LOG_DIR = Path("artifacts/runs")
 

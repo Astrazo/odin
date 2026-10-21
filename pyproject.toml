@@ -1,10 +1,10 @@
 [project]
 name = "odin"
 version = "0.1.0"
-description = "Add your description here"
+description = "Experimental Northgard observation and control interface for reinforcement learning."
 readme = "README.md"
 authors = [
-    { name = "Astrazo", email = "josh@engineermonkey.me" }
+    { name = "Astrazo" }
 ]
 requires-python = ">=3.13"
 dependencies = ["typer"]

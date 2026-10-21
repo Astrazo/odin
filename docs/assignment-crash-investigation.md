@@ -108,7 +108,7 @@ investigation did not establish either as the cause of the reported exits.
 ## Existing evidence
 
 The prior investigation is in
-`C:/Users/Josh/Repos/northgard-god/docs/experiments/WORKER_ASSIGNMENT_EXPERIMENT.md`.
+`northgard-god/docs/experiments/WORKER_ASSIGNMENT_EXPERIMENT.md (separate local repository)`.
 It records post-call crashes through both `ScriptApi.assign` f11737 and
 `GameLogic.assign` f12262, including accepted Scout Camp and Woodcutter Lodge
 orders. The latest reported UI-route attempt returned true and immediately
@@ -158,7 +158,7 @@ This defect is independent of proving the assignment crash's cause.
 ## Correction to the previous dump interpretation
 
 Read-only inspection of
-`C:/Users/Josh/AppData/Local/CrashDumps/Northgard.exe.14552.dmp`
+`%LOCALAPPDATA%/CrashDumps/Northgard.exe.14552.dmp`
 (20 October, 09:26:56) confirms exception `0x40000015`, exception thread 7576,
 and exception address `OpenAL32.dll+0xd9076`.
 
