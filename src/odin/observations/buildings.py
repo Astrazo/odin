@@ -84,17 +84,21 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
         for column, identifier in enumerate(building_ids)
     }
     completed_rows = []
+    upgraded_rows = []
     construction_rows = []
     unassigned_rows = []
     construction_sites = []
     assignments = None
     action_rows = []
+    upgrade_rows = []
     unmapped = set()
 
     for zone_id in graph["zone_ids"]:
         node = graph["nodes"][zone_id]
         zone = node["expression"]
         completed = [0] * len(building_ids)
+        upgraded = [0] * len(building_ids)
+        upgrade_mask = [0.0] * len(building_ids)
         construction = [0] * len(building_ids)
         unassigned = [0] * len(building_ids)
 
@@ -127,6 +131,14 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
                     column = column_by_id.get(family)
                     if column is not None:
                         completed[column] += 1
+                        if _call_bool(runtime, f"{building}.isUpgraded()"):
+                            upgraded[column] += 1
+                        if node["owner"]["owned"]:
+                            # This also enforces the upgraded-town-hall prerequisite
+                            # for ordinary upgrades, including native clan exceptions.
+                            reason = runtime.call_native(f"{building}.getNoUpgradeReason()")
+                            if reason == "null":
+                                upgrade_mask[column] = 1.0
                     elif current_id is not None:
                         unmapped.add((zone_id, "completed", current_id))
 
@@ -138,6 +150,8 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
                     unmapped.add((zone_id, "available", engine_id))
 
         completed_rows.append(completed)
+        upgraded_rows.append(upgraded)
+        upgrade_rows.append(upgrade_mask)
         construction_rows.append(construction)
         unassigned_rows.append(unassigned)
         action_rows.append([
@@ -159,13 +173,17 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
         ] + [
             f"unassigned_construction_{identifier}"
             for identifier in building_ids
+        ] + [
+            f"upgraded_building_{identifier}"
+            for identifier in building_ids
         ],
         "x": [
-            completed + construction + unassigned
-            for completed, construction, unassigned in zip(
+            completed + construction + unassigned + upgraded
+            for completed, construction, unassigned, upgraded in zip(
                 completed_rows,
                 construction_rows,
                 unassigned_rows,
+                upgraded_rows,
                 strict=True,
             )
         ],
@@ -173,6 +191,7 @@ def observe_buildings(runtime, catalogue: dict, graph: dict) -> dict:
         "schema_sha256": catalogue["schema_sha256"],
         "zone_ids": graph["zone_ids"],
         "build_action_mask": action_rows,
+        "upgrade_action_mask": upgrade_rows,
         "construction_sites": sorted(construction_sites, key=lambda site: site["building_id"]),
         "unmapped_buildings": [
             {"zone_id": zone_id, "source": source, "engine_id": engine_id}

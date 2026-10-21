@@ -368,6 +368,34 @@
       "null_only": [1],
       "result": "void"
     },
+    "building_is_upgraded": {
+      "function_index": 5821,
+      "arguments": ["ptr"], "kinds": [11], "result": "bool"
+    },
+    "building_upgrade_reason": {
+      "function_index": 5889,
+      "arguments": ["ptr"], "kinds": [11], "result": "ptr"
+    },
+    "building_upgrade_cost": {
+      "function_index": 5818,
+      "arguments": ["ptr", "ptr"], "kinds": [11, 19],
+      "null_only": [1], "result": "ptr"
+    },
+    "building_free_upgrade": {
+      "function_index": 13200,
+      "arguments": ["ptr", "ptr", "ptr"], "kinds": [11, 11, 11],
+      "null_only": [2], "result": "bool"
+    },
+    "building_upgrade": {
+      "function_index": 6041,
+      "arguments": ["ptr", "ptr", "ptr"], "kinds": [11, 11, 10],
+      "null_only": [1, 2], "result": "void"
+    },
+    "debug_add_resource": {
+      "function_index": 13495,
+      "arguments": ["ptr", "ptr", "f64", "ptr"], "kinds": [11, 11, 6, 18],
+      "null_only": [3], "result": "bool"
+    },
     "unit_is_fighter": {
       "function_index": 4225,
       "arguments": ["ptr"],

@@ -88,6 +88,43 @@ Live validation started one feast: food500 ->400, remaining time60 seconds,
 next cost150 food, and a duplicate request rejected before dispatch. See
 [native evidence and validation](docs/feast.md).
 
+## Building upgrades and debug resources
+
+```powershell
+uv run odin tools upgrade-preview --building town_hall --zone 30
+uv run odin upgrade --building town_hall --zone 30
+uv run odin debug add-resource stone 10
+uv run odin debug add-resource wood 200
+uv run odin debug add-resource gold 100
+```
+
+Upgrade selection uses a completed building family and owned zone, choosing an
+eligible building before using its lowest runtime UID as a tie-break. A numeric
+`--building` UID also works for debugging; omit `--zone` in that case. The preview
+reports native blocking reason, nominal next cost, free-upgrade eligibility and
+current level. The action upgrades one ordinary level using normal payment and
+confirms the level increased. Transformation branches are not exposed.
+Both commands accept optional `--player`; bot actions require a paused match and
+stopped stock AI orders. Python uses `env.upgrade("town_hall", zone_id=30)`.
+
+Zone observations retain total completed counts and append
+`upgraded_building_<family>` counts. `upgrade_action_mask` is a zone-by-building
+matrix aligned with `zone_ids` and `building_ids`; a1 means at least one owned
+building of that family can currently upgrade. Consumers must account for the
+extra observation columns.
+
+`debug add-resource RESOURCE AMOUNT` grants a positive amount in an offline host
+match. Resources are `food`, `wood`, `gold` (also `krowns`/`money`), `stone`, `iron`
+and `lore`. Optional `--player` selects another clan. The result reports requested
+and actual added amounts using native resource bookkeeping and limits. Debug
+grants are separate from environment policy actions and never run automatically
+when an upgrade is unaffordable.
+
+Live validation granted the missing10 stone, changed the town hall's eligibility
+from `CantPay` to allowed, then upgraded it from level0 to1. The normal request
+deducted100 wood,50 Krowns and10 stone. The observation showed one upgraded town
+hall and a zero mask after reaching `NoUpgrade`. See [native evidence](docs/upgrades.md).
+
 ## Lore and military progression
 
 ```powershell

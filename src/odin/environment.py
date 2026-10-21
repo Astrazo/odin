@@ -7,6 +7,7 @@ from odin.actions.buildings import build_building
 from odin.actions.colonisation import colonise_zone
 from odin.actions.pause import pause_game
 from odin.actions.feast import start_feast
+from odin.actions.upgrades import upgrade_building
 from odin.actions.movement import move_units
 from odin.actions.progression import choose_military_path, research_lore
 from odin.actions.scouting import scout_zone
@@ -119,6 +120,7 @@ class NorthgardEnv:
             zones["building_ids"] = buildings["building_ids"]
             zones["building_schema_sha256"] = buildings["schema_sha256"]
             zones["build_action_mask"] = buildings["build_action_mask"]
+            zones["upgrade_action_mask"] = buildings["upgrade_action_mask"]
             zones["unmapped_buildings"] = buildings["unmapped_buildings"]
             zones["construction_sites"] = buildings["construction_sites"]
             zones["unit_ids"] = units["unit_ids"]
@@ -199,3 +201,10 @@ class NorthgardEnv:
     def feast(self, *, player_id: int | None = None) -> dict:
         """Start one currently affordable feast, paying the game's cost."""
         return self.act(start_feast, player_id=player_id)
+
+    def upgrade(
+        self, building: int | str, *, zone_id: int | None = None,
+        player_id: int | None = None,
+    ) -> dict:
+        """Upgrade one eligible building of this family in the chosen zone."""
+        return self.act(upgrade_building, building, zone_id=zone_id, player_id=player_id)

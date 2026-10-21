@@ -16,6 +16,8 @@ from odin.actions.players import list_players, set_ai_orders
 from odin.actions.progression import choose_military_path, research_lore
 from odin.actions.colonisation import colonise_zone, list_colonisation_zones, preview_colonisation
 from odin.actions.workers import resolve_assignment
+from odin.actions.upgrades import preview_upgrade, upgrade_building
+from odin.tools.debug_resources import add_resources
 from odin.bridge.launch import launch_game
 from odin.bridge.session import NativeRuntime
 from odin.environment import NorthgardEnv, OBSERVATION_TENSORS
@@ -29,7 +31,9 @@ from odin.tools.unit_jobs import list_unit_jobs
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 tools_app = typer.Typer(add_completion=False, no_args_is_help=True)
+debug_app = typer.Typer(add_completion=False, no_args_is_help=True)
 app.add_typer(tools_app, name="tools")
+app.add_typer(debug_app, name="debug")
 DEFAULT_EXE = Path(r"C:\Program Files (x86)\Steam\steamapps\common\Northgard\Northgard.exe")
 ADAPTER = Path(r"C:\Users\Josh\.vscode\extensions\haxefoundation.haxe-hl-2.0.0\adapter.js")
 DEBUG_PORT = 6112
@@ -199,6 +203,51 @@ def progression(
     """Read lore and military progression, costs and legal choices without unlocking."""
     with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
         typer.echo(json.dumps(observe_progression(runtime, player_id=player_id), indent=2))
+
+
+@app.command("upgrade")
+def upgrade(
+    building: str = typer.Option(..., "--building", help="Building family, or runtime UID for debugging."),
+    zone_id: int | None = typer.Option(None, "--zone", help="Owned zone; required for a building family."),
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Upgrade one eligible building, paying the normal native cost."""
+    try:
+        with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+            result = upgrade_building(runtime, building, zone_id=zone_id, player_id=player_id)
+    except ValueError as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(json.dumps(result))
+
+
+@tools_app.command("upgrade-preview")
+def upgrade_preview(
+    building: str = typer.Option(..., "--building", help="Building family, or runtime UID for debugging."),
+    zone_id: int | None = typer.Option(None, "--zone", help="Owned zone; required for a building family."),
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Inspect the next building upgrade, native cost and blocking reason."""
+    try:
+        with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+            result = preview_upgrade(runtime, building, zone_id=zone_id, player_id=player_id)
+    except ValueError as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(json.dumps(result, indent=2))
+
+
+@debug_app.command("add-resource")
+def debug_add_resource(
+    resource: str = typer.Argument(..., help="food, wood, gold/krowns, stone, iron or lore."),
+    amount: float = typer.Argument(..., min=0, help="Positive amount to add through native resource bookkeeping."),
+    player_id: int | None = typer.Option(None, "--player", help="Player UID; defaults to your player."),
+) -> None:
+    """Grant resources for offline manual checks; excluded from policy actions."""
+    try:
+        with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+            result = add_resources(runtime, resource, amount, player_id=player_id)
+    except ValueError as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(json.dumps(result))
 
 
 @app.command("feast")

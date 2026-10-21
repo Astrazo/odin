@@ -42,7 +42,7 @@ def resolve_worker(
     raise ValueError(f"No living owned {job} in zone {source_zone_id}{target}.")
 
 
-def _building_candidates(
+def resolve_building_candidates(
     runtime, building: int | str, target_zone_id: int | None,
     construction: bool, player_id: int | None,
 ) -> tuple[list[int], int]:
@@ -107,7 +107,7 @@ def resolve_assignment(
         raise ValueError("Supply a profession when selecting a source zone.")
     if (unit_id is None) == (job is None):
         raise ValueError("Choose a worker UID or profession/source zone.")
-    building_ids, building_zone_id = _building_candidates(runtime, building, target_zone_id, construction, player_id)
+    building_ids, building_zone_id = resolve_building_candidates(runtime, building, target_zone_id, construction, player_id)
     if source_zone_id is None:
         source_zone_id = building_zone_id
     unit_ids = [unit_id] if unit_id is not None else _worker_candidates(runtime, job, source_zone_id, player_id)
