@@ -88,6 +88,53 @@ Live validation started one feast: food500 ->400, remaining time60 seconds,
 next cost150 food, and a duplicate request rejected before dispatch. See
 [native evidence and validation](docs/feast.md).
 
+## Chief and companion recruitment
+
+```powershell
+uv run odin tools recruitment
+uv run odin recruit warchief
+uv run odin recruit bear
+uv run odin recruit warchief --zone 30
+```
+
+The game supplies the clan's chief/companion choices, recruitment-building rules,
+costs, cooldown/uniqueness checks and paid recruitment request. Odin scans current
+owned buildings and chooses the lowest-UID eligible location; optional `--zone`
+restricts that search. No recruitment-building list is hardcoded in Python.
+Both commands accept optional `--player`; bot recruitment requires a paused
+offline match and stopped stock AI orders.
+
+`warchief` resolves automatically when the clan has one chief choice. With
+multiple chiefs, use one of the named `id` values from `tools recruitment`.
+`bear` (also `bear_companion`) selects the Bear companion when the native clan
+catalogue provides it. Choice IDs can reflect cosmetic variants; runtime UIDs
+remain internal. Already-present units, costs and cooldowns remain native rules.
+
+The tool returns costs, eligible/blocked locations and `recruit_action_mask`
+aligned with its native `recruit_ids`. Progression observations include this
+readable information under `progression.recruitment` and append ten numeric
+columns: for each of `warchief`, then `bear_companion`, the suffixes are
+`available`, `can_recruit`, `cost_food`, `cost_gold`, `cost_iron`, prefixed with
+`recruit_<choice>_`. Availability means the semantic action has one native
+counterpart for this clan; current eligibility also requires a legal building,
+resources, uniqueness and cooldown checks. An unavailable slot has zero costs
+and mask. Costs remain visible when recruitment is temporarily blocked.
+
+Top-level `progression.recruit_ids` is always `["warchief", "bear_companion"]`,
+with `progression.recruit_action_mask` in the same order. Pass the chosen label
+to `env.recruit(...)`; native unit variants and building UIDs are resolved
+internally. Multiple-chief clans require explicit native choices and have the
+generic warchief slot masked. This encoding adds ten columns and changes the
+progression schema fingerprint; existing model inputs need updating.
+Existing zone unit counts and job maps recognise cosmetic chiefs via
+the native warchief classifier. Python uses `env.recruit("warchief", zone_id=...)`.
+
+Live validation recruited Stag's cosmetic chief after granting the missing5 iron.
+The normal request paid150 Krowns and5 iron, a duplicate returned `AlreadyOne`,
+the mask switched off, and the unit appeared in the warchief count/job map.
+Bear and multiple-chief recruitment still need live validation with those clans.
+See [native recruitment evidence](docs/recruitment.md).
+
 ## Building upgrades and debug resources
 
 ```powershell
@@ -465,19 +512,18 @@ uv run odin run --tensor zones --show-unmapped
 ```
 
 Horse's `ForgeHorse` maps to the shared `forge` family. `mine` remains in the
-shared schema but is unavailable to Horse; its warchiefs mine instead. Warchief
-recruitment from the Forge is a planned action, while Forge relic crafting is
-deferred.
+shared schema but is unavailable to Horse; its warchiefs mine instead. The
+recruitment resolver uses native building rules, including Horse's Forge;
+multiple chiefs require explicit choices. Forge relic crafting is deferred.
 
 ## Training-clan rollout
 
 The selected clans and rollout order live in
 `src/odin/data/training_clans.json`. Wolf and Bear are the baseline. Stag and
-Goat follow once that contract is stable, then Raven and Boar. Bear's future
-military action set contains both `recruit_warchief` and
-`recruit_bear_companion`. Raven's planned Harbor actions are `loot_krowns`,
+Goat follow once that contract is stable, then Raven and Boar. Bear's recruitment
+choices contain both `warchief` and `bear_companion`. Raven's planned Harbor actions are `loot_krowns`,
 `scout_shores`, and `deploy_mercenaries`; normal Dock modes are `raid_lore` and
-`raid_fame`. Trade routes are deferred. No recruitment or Harbor action is
-implemented yet. Boar's future neutral-zone colonisation path is also action
+`raid_fame`. Trade routes and Harbor actions are deferred. Recruitment is
+implemented as described above. Boar's future neutral-zone colonisation path is also action
 masked separately. Snake adds future `signy_age`, `copied_lore`, and
-`copied_lore_choice` fields; no Snake native binding is implemented yet.
+`copied_lore_choice` fields; those Snake-specific observations are not implemented yet.

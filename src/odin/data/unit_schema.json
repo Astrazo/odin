@@ -20,7 +20,7 @@
     {"id": "shield_bearer", "engine_ids": ["ShieldBearer"]},
     {"id": "skirmisher", "engine_ids": ["Skirmisher"]},
     {"id": "warchief", "engine_ids": ["Warchief", "Berserker", "Maiden", "WarchiefSnake", "HorseMaiden", "HorseHero"]},
-    {"id": "bear_companion", "engine_ids": ["Bear"]}
+    {"id": "bear_companion", "engine_ids": ["Bear", "BearMaiden"]}
   ],
   "neutral_families": [
     {"id": "wolf", "engine_ids": ["Wolf", "WhiteWolf", "NiflheimWhiteWolf"]},

@@ -396,6 +396,36 @@
       "arguments": ["ptr", "ptr", "f64", "ptr"], "kinds": [11, 11, 6, 18],
       "null_only": [3], "result": "bool"
     },
+    "recruitable_heroes": {
+      "function_index": 5023,
+      "arguments": ["ptr"], "kinds": [11], "result": "ptr"
+    },
+    "recruitable_warchiefs": {
+      "function_index": 5024,
+      "arguments": ["ptr"], "kinds": [11], "result": "ptr"
+    },
+    "building_can_hire_hero": {
+      "function_index": 5799,
+      "arguments": ["ptr", "ptr"], "kinds": [11, 11], "result": "bool"
+    },
+    "hero_recruitment_reason": {
+      "function_index": 5027,
+      "arguments": ["ptr", "ptr", "ptr", "ptr"], "kinds": [11, 11, 11, 19],
+      "null_only": [3], "result": "ptr"
+    },
+    "hero_recruitment_cost": {
+      "function_index": 5022,
+      "arguments": ["ptr", "ptr"], "kinds": [11, 11], "result": "ptr"
+    },
+    "hero_recruitment": {
+      "function_index": 5278,
+      "arguments": ["ptr", "ptr", "ptr", "ptr", "ptr"], "kinds": [11, 11, 11, 19, 10],
+      "null_only": [3, 4], "result": "void"
+    },
+    "unit_is_warchief": {
+      "function_index": 4235,
+      "arguments": ["ptr"], "kinds": [11], "result": "bool"
+    },
     "unit_is_fighter": {
       "function_index": 4225,
       "arguments": ["ptr"],

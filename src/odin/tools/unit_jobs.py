@@ -24,8 +24,11 @@ def list_unit_jobs(runtime, *, player_id: int | None = None) -> dict:
         zone_id = None
         if runtime.evaluate(f"{unit}.zone == null") == "false":
             zone_id = int(runtime.evaluate(f"{unit}.zone.id"))
+        job = catalogue["family_by_engine_id"].get(engine_id)
+        if job is None and runtime.call_native(f"{unit}.get_isWarchief()") == "true":
+            job = "warchief"
         unit_jobs[unit_id] = {
-            "job": catalogue["family_by_engine_id"].get(engine_id),
+            "job": job,
             "engine_id": engine_id,
             "zone_id": zone_id,
         }

@@ -8,6 +8,7 @@ from odin.actions.colonisation import colonise_zone
 from odin.actions.pause import pause_game
 from odin.actions.feast import start_feast
 from odin.actions.upgrades import upgrade_building
+from odin.actions.recruitment import recruit_hero
 from odin.actions.movement import move_units
 from odin.actions.progression import choose_military_path, research_lore
 from odin.actions.scouting import scout_zone
@@ -208,3 +209,10 @@ class NorthgardEnv:
     ) -> dict:
         """Upgrade one eligible building of this family in the chosen zone."""
         return self.act(upgrade_building, building, zone_id=zone_id, player_id=player_id)
+
+    def recruit(
+        self, who: str = "warchief", *, zone_id: int | None = None,
+        player_id: int | None = None,
+    ) -> dict:
+        """Recruit one named chief/companion at an eligible native building."""
+        return self.act(recruit_hero, who, zone_id=zone_id, player_id=player_id)

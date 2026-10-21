@@ -119,6 +119,10 @@ def observe_units(runtime, catalogue: dict, graph: dict) -> dict:
                 families = catalogue["neutral_family_by_engine_id"]
                 columns = neutral_column_by_id
             family = families.get(engine_id)
+            # Cosmetic chief kinds can be absent from the ordinary unit list.
+            if family is None and side != "neutral":
+                if _call_bool(runtime, f"{unit}.get_isWarchief()"):
+                    family = "warchief"
             if owned:
                 unit_id = str(int(runtime.evaluate(f"{unit}.__uid")))
                 unit_jobs[unit_id] = {

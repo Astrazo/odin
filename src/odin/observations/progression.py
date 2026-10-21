@@ -6,6 +6,9 @@ import math
 import re
 
 from odin.actions.players import resolve_player
+from odin.observations.recruitment import (
+    RECRUIT_IDS, RECRUIT_FEATURE_NAMES, observe_recruitment, encode_recruitment,
+)
 
 
 # Reviewed ordinary Viking trees. Exceptional clan research/boards need their
@@ -87,10 +90,14 @@ def load_progression_catalogue(runtime, *, player_id: int | None = None) -> dict
             break
     if xp_key is None:
         raise RuntimeError("MilitaryXP resource was not found.")
-    identity = {"clan": clan, "techs": {key: value["engine_id"] for key, value in sorted(techs.items())}, "paths": paths}
+    identity = {
+        "clan": clan, "techs": {key: value["engine_id"] for key, value in sorted(techs.items())},
+        "paths": paths, "recruit_ids": RECRUIT_IDS, "recruit_features": RECRUIT_FEATURE_NAMES,
+    }
     digest = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
     return {
         "player": player, "clan": clan, "techs": dict(sorted(techs.items())),
+        "player_id": player_id,
         "abilities": abilities, "paths": paths, "xp_key": xp_key,
         "schema_sha256": digest,
     }
@@ -160,6 +167,9 @@ def observe_progression(runtime, catalogue: dict | None = None, *, player_id: in
             values[f"military_{semantic_name(engine_id)}_unlocked"] = native_bool(
                 runtime, f"{component}.hasMiliPathAbility({entry}.id, null)",
             )
+    recruitment = observe_recruitment(runtime, player_id=catalogue["player_id"])
+    encoded_recruitment = encode_recruitment(recruitment)
+    values.update(zip(encoded_recruitment["feature_names"], encoded_recruitment["x"], strict=True))
     if any(not math.isfinite(value) or value < 0 for value in values.values()):
         raise RuntimeError("Invalid progression feature value.")
     return {
@@ -168,5 +178,8 @@ def observe_progression(runtime, catalogue: dict | None = None, *, player_id: in
         "tech_ids": list(catalogue["techs"]), "military_path_ids": list(catalogue["paths"]),
         "lore_action_mask": [int(tech["can_research"]) for tech in tech_choices],
         "military_action_mask": [int(path["can_select"]) for path in military_choices],
+        "recruit_ids": encoded_recruitment["recruit_ids"],
+        "recruit_action_mask": encoded_recruitment["recruit_action_mask"],
+        "recruitment": recruitment,
         "techs": tech_choices, "military_paths": military_choices,
     }

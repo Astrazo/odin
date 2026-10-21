@@ -17,6 +17,8 @@ from odin.actions.progression import choose_military_path, research_lore
 from odin.actions.colonisation import colonise_zone, list_colonisation_zones, preview_colonisation
 from odin.actions.workers import resolve_assignment
 from odin.actions.upgrades import preview_upgrade, upgrade_building
+from odin.actions.recruitment import recruit_hero
+from odin.observations.recruitment import observe_recruitment
 from odin.tools.debug_resources import add_resources
 from odin.bridge.launch import launch_game
 from odin.bridge.session import NativeRuntime
@@ -203,6 +205,35 @@ def progression(
     """Read lore and military progression, costs and legal choices without unlocking."""
     with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
         typer.echo(json.dumps(observe_progression(runtime, player_id=player_id), indent=2))
+
+
+@app.command("recruit")
+def recruit(
+    who: str = typer.Argument("warchief", help="warchief, bear, or a named choice from tools recruitment."),
+    zone_id: int | None = typer.Option(None, "--zone", help="Restrict recruitment buildings to this owned zone."),
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Recruit a chief or companion, resolving a legal building automatically."""
+    try:
+        with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+            result = recruit_hero(runtime, who, zone_id=zone_id, player_id=player_id)
+    except ValueError as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(json.dumps(result))
+
+
+@tools_app.command("recruitment")
+def recruitment(
+    zone_id: int | None = typer.Option(None, "--zone", help="Restrict recruitment buildings to this owned zone."),
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """List native chiefs/companions, costs, building locations and recruitment masks."""
+    try:
+        with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+            result = observe_recruitment(runtime, player_id=player_id, zone_id=zone_id)
+    except ValueError as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(json.dumps(result, indent=2))
 
 
 @app.command("upgrade")
