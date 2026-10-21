@@ -329,6 +329,64 @@
       "kinds": [11, 11, 10],
       "result": "void",
       "null_only": [2]
+    },
+    "feast_is_active": {
+      "function_index": 13537,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "bool"
+    },
+    "feast_time_remaining": {
+      "function_index": 13539,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "ptr"
+    },
+    "feast_cost": {
+      "function_index": 13528,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "ptr"
+    },
+    "can_feast": {
+      "function_index": 4727,
+      "arguments": ["ptr", "ptr"],
+      "kinds": [11, 11],
+      "result": "bool"
+    },
+    "player_is_defeated": {
+      "function_index": 4978,
+      "arguments": ["ptr", "ptr"],
+      "kinds": [11, 14],
+      "null_only": [1],
+      "result": "bool"
+    },
+    "start_feast": {
+      "function_index": 13686,
+      "arguments": ["ptr", "ptr"],
+      "kinds": [11, 10],
+      "null_only": [1],
+      "result": "void"
+    },
+    "unit_is_fighter": {
+      "function_index": 4225,
+      "arguments": ["ptr"],
+      "kinds": [11],
+      "result": "bool"
+    },
+    "unit_is_controllable": {
+      "function_index": 4275,
+      "arguments": ["ptr", "ptr"],
+      "kinds": [11, 14],
+      "result": "bool",
+      "null_only": [1]
+    },
+    "unit_can_go_to": {
+      "function_index": 4068,
+      "arguments": ["ptr", "ptr", "ptr"],
+      "kinds": [11, 11, 19],
+      "result": "bool",
+      "null_only": [2]
     }
   }
 }

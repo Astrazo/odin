@@ -6,6 +6,8 @@ from odin.actions.assignments import assign_to_building
 from odin.actions.buildings import build_building
 from odin.actions.colonisation import colonise_zone
 from odin.actions.pause import pause_game
+from odin.actions.feast import start_feast
+from odin.actions.movement import move_units
 from odin.actions.progression import choose_military_path, research_lore
 from odin.actions.scouting import scout_zone
 from odin.actions.workers import assign_worker_to_building
@@ -163,6 +165,13 @@ class NorthgardEnv:
         """Send one eligible scout to an undiscovered neighbouring zone."""
         return self.act(scout_zone, unit_id, zone_id)
 
+    def move(
+        self, from_zone: int, to_zone: int, who: str, *, count: int | None = None,
+        player_id: int | None = None,
+    ) -> dict:
+        """Move an eligible semantic unit group without exposing runtime IDs."""
+        return self.act(move_units, from_zone, to_zone, who, count=count, player_id=player_id)
+
     def assign_worker(
         self, job: str, source_zone_id: int | None = None, building_id: int | str | None = None,
         *, target_zone_id: int | None = None, construction: bool = False,
@@ -186,3 +195,7 @@ class NorthgardEnv:
     def military(self, path: str, *, player_id: int | None = None) -> dict:
         """Choose a currently legal primary military path."""
         return self.act(choose_military_path, path, player_id=player_id)
+
+    def feast(self, *, player_id: int | None = None) -> dict:
+        """Start one currently affordable feast, paying the game's cost."""
+        return self.act(start_feast, player_id=player_id)

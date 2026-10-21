@@ -8,6 +8,9 @@ from pathlib import Path
 import typer
 
 from odin.actions.pause import pause_game
+from odin.actions.feast import start_feast
+from odin.observations.feast import observe_feast
+from odin.actions.movement import move_units, preview_move
 from odin.actions.assignments import assign_to_building, preview_assignment
 from odin.actions.players import list_players, set_ai_orders
 from odin.actions.progression import choose_military_path, research_lore
@@ -46,6 +49,14 @@ def parse_worker_job(value: str | None) -> str | None:
             message += f" Did you mean {matches[0]!r}?"
         raise typer.BadParameter(message)
     return job
+
+
+def parse_move_who(value: str) -> str:
+    """Allow a profession or the two explicit group selectors."""
+    who = value.lower().replace("-", "_")
+    if who in {"all", "military"}:
+        return who
+    return parse_worker_job(who)
 
 
 @app.callback()
@@ -133,6 +144,44 @@ def lore(
         typer.echo(json.dumps(research_lore(runtime, tech, player_id=player_id)))
 
 
+@app.command("move")
+def move(
+    from_zone: int = typer.Option(..., "--from-zone", help="Current zone of the units to select."),
+    to_zone: int = typer.Option(..., "--to-zone", help="Discovered destination zone."),
+    who: str = typer.Option(..., "--who", callback=parse_move_who, help="Profession, military, or all."),
+    count: int | None = typer.Option(None, "--count", min=1, help="Exact number to move; omit for all eligible matches."),
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Move a selected group between zones, with normal fighter combat enabled."""
+    if from_zone == to_zone:
+        raise typer.BadParameter("Source and destination zones must differ.")
+    try:
+        with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+            result = move_units(runtime, from_zone, to_zone, who, count=count, player_id=player_id)
+    except ValueError as error:
+        raise typer.BadParameter(str(error)) from None
+    typer.echo(json.dumps(result, indent=2))
+
+
+@tools_app.command("move-preview")
+def move_preview(
+    from_zone: int = typer.Option(..., "--from-zone", help="Current zone of the units to select."),
+    to_zone: int = typer.Option(..., "--to-zone", help="Discovered destination zone."),
+    who: str = typer.Option(..., "--who", callback=parse_move_who, help="Profession, military, or all."),
+    count: int | None = typer.Option(None, "--count", min=1, help="Exact number to move; omit for all eligible matches."),
+    player_id: int | None = typer.Option(None, "--player", help="Player UID; defaults to your player."),
+) -> None:
+    """Resolve a move and explain blocked units without sending any orders."""
+    if from_zone == to_zone:
+        raise typer.BadParameter("Source and destination zones must differ.")
+    try:
+        with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+            result = preview_move(runtime, from_zone, to_zone, who, count=count, player_id=player_id)
+    except ValueError as error:
+        raise typer.BadParameter(str(error)) from None
+    typer.echo(json.dumps(result, indent=2))
+
+
 @app.command("military")
 def military(
     path: str = typer.Argument(..., help="Military path label from tools progression."),
@@ -150,6 +199,28 @@ def progression(
     """Read lore and military progression, costs and legal choices without unlocking."""
     with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
         typer.echo(json.dumps(observe_progression(runtime, player_id=player_id), indent=2))
+
+
+@app.command("feast")
+def feast(
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Start a feast, paying the game's current resource cost."""
+    try:
+        with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+            result = start_feast(runtime, player_id=player_id)
+    except ValueError as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(json.dumps(result))
+
+
+@tools_app.command("feast")
+def feast_preview(
+    player_id: int | None = typer.Option(None, "--player", help="Acting player UID; defaults to your player."),
+) -> None:
+    """Read feast state, next cost and eligibility without starting a feast."""
+    with NativeRuntime(ADAPTER, DEFAULT_EXE, DEBUG_PORT) as runtime:
+        typer.echo(json.dumps(observe_feast(runtime, player_id=player_id), indent=2))
 
 
 @app.command("colonise")

@@ -39,6 +39,7 @@ Current observation
 - happiness, population, population cap and food cap
 - villager growth active, progress and time remaining
 - current game time and time until the next winter and summer
+- feast active state, remaining time, next resource/cost and start eligibility
 - clan lore research, military XP/path progression and legal progression choices
 - discovered one-hop zone graph with ownership, natural-food, fish and remaining
   stone/iron features per node
@@ -61,6 +62,31 @@ Every `odin run` also writes the full observation sequence as a timestamped JSON
 array in `artifacts/runs/`. The CLI prints the exact path when the run starts.
 
 Available names are `pause`, `economy`, `temporal`, `zones` and `progression`.
+
+## Feasts
+
+```powershell
+uv run odin tools feast
+uv run odin feast
+uv run odin run --tensor temporal
+```
+
+`tools feast` reads the active feast, remaining simulation seconds, next native
+cost and `can_feast`. `feast` sends one normal paid request and confirms the
+active state. Both accept optional `--player`; actions for bots require their
+stock AI orders stopped and the game paused. Python uses `env.feast(player_id=...)`.
+
+The temporal tensor now has nine values: the existing three clock/season values,
+then `is_feasting`, `feast_time_remaining`, `feast_resource_food`,
+`feast_resource_gold`, `feast_cost`, `can_feast`. The resource flags encode the
+native Food/Money choice without an arbitrary numeric ID. Cost always describes
+the next feast, including native discounts/free feasts; `can_feast` is the action
+mask. The readable `feast` metadata contains the native resource name and cost.
+Consumers using the previous three-value temporal shape must update their input.
+
+Live validation started one feast: food500 ->400, remaining time60 seconds,
+next cost150 food, and a duplicate request rejected before dispatch. See
+[native evidence and validation](docs/feast.md).
 
 ## Lore and military progression
 
@@ -105,6 +131,50 @@ state; an unconfirmed result is not automatically retried. Python exposes
 `env.lore("lumber", player_id=...)` and `env.military("guardian", player_id=...)`.
 
 See [the native bindings and validation record](docs/progression.md).
+
+## Moving units
+
+```powershell
+uv run odin move --from-zone 7 --to-zone 4 --who villager
+uv run odin move --from-zone 4 --to-zone 7 --who military
+uv run odin move --from-zone 4 --to-zone 7 --who warrior --count 3
+uv run odin move --from-zone 7 --to-zone 4 --who all
+```
+
+`--who` accepts a profession from the unit-count vocabulary, `military` (the
+native fighter predicate), or `all`. Selection includes only living owned units
+currently in `--from-zone`; runtime IDs are resolved internally in ascending
+order. Omit `--count` to select all eligible matches. An explicit count is exact:
+if fewer units are eligible, no order is sent. Unknown professions, nonpositive
+counts and identical source/destination zones are rejected.
+
+Preview the same command without moving anyone:
+
+```powershell
+uv run odin tools move-preview --from-zone 7 --to-zone 4 --who villager --count 2
+```
+
+The preview shows eligible count, selected unit IDs, excluded units/reasons and
+whether the request can be dispatched. Native controllability and path checks
+decide eligibility. General movement requires a destination in the
+discovered map, whether friendly, neutral or enemy-owned; use the separate
+scout action for undiscovered targets. No hidden-zone contents are exported.
+
+Fighters receive normal movement with `canAttack=true`; other units receive
+`false`. This uses native unit actions and leaves ordinary combat to the game.
+There is no separate attack command. Moving does not prove arrival, survival,
+zone clearance or colonisation; use subsequent observations to decide what to
+do next. Native movement clears building assignment/work links, so returning a
+specialist may require a separate `assign` action and a fresh profession read.
+
+Results distinguish confirmed or already-existing destination orders from
+unconfirmed ones. If one order fails, earlier orders may still be active;
+remaining units are reported as not attempted and no orders are retried.
+Both commands accept `--player PLAYER_UID`; bot movement requires a paused
+authoritative offline match with that bot's stock AI orders stopped.
+Python exposes `env.move(7, 4, "villager", count=2, player_id=...)`.
+
+See [movement bindings and live validation](docs/movement.md).
 
 ## Scoutable zones
 

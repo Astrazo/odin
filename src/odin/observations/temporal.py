@@ -2,12 +2,20 @@
 
 import math
 
+from odin.observations.feast import observe_feast
+
 
 PAUSE_FEATURE_NAMES = ["is_paused"]
 TEMPORAL_FEATURE_NAMES = [
     "game_time",
     "time_until_winter",
     "time_until_summer",
+    "is_feasting",
+    "feast_time_remaining",
+    "feast_resource_food",
+    "feast_resource_gold",
+    "feast_cost",
+    "can_feast",
 ]
 
 
@@ -27,7 +35,7 @@ def observe_pause(runtime) -> dict:
 
 
 def observe_temporal(runtime) -> dict:
-    """Read the simulation clock and the next two season transitions."""
+    """Read the simulation clock, season transitions and clan feast state."""
     game_time = float(runtime.call_native("this.get_time()"))
     until_winter = float(runtime.call_native("this.state.timeToNextWinter()"))
     until_summer = float(runtime.call_native("this.state.timeToWinterEnd()"))
@@ -37,7 +45,20 @@ def observe_temporal(runtime) -> dict:
         raise RuntimeError("Invalid temporal observation.")
 
     values = [game_time, max(0.0, until_winter), max(0.0, until_summer)]
+    feast = observe_feast(runtime)
+    if len(feast["cost"]) != 1 or feast["cost"][0]["resource"] not in {"Food", "Money"}:
+        raise RuntimeError("Unsupported feast cost for the temporal tensor.")
+    cost = feast["cost"][0]
+    values.extend([
+        float(feast["is_feasting"]),
+        feast["feast_time_remaining"],
+        float(cost["resource"] == "Food"),
+        float(cost["resource"] == "Money"),
+        float(cost["quantity"]),
+        float(feast["can_feast"]),
+    ])
     return {
         "feature_names": list(TEMPORAL_FEATURE_NAMES),
         "x": values,
+        "feast": feast,
     }
